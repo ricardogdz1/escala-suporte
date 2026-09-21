@@ -1,0 +1,173 @@
+<style>
+  .sabados { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }
+  @media (max-width: 1000px) { .sabados { grid-template-columns: 1fr; } }
+  .cartoes-sabado { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .cartao-sabado { display: flex; flex-direction: column; gap: 10px; }
+  .cartao-sabado.bloqueado { background: var(--cinza-claro); border-style: dashed; }
+  .cartao-sabado.passado { opacity: 0.8; }
+  .cartao-sabado .topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .cartao-sabado .contagem { font-family: var(--fonte-titulo); font-weight: 700; font-size: 18px; color: var(--verde); }
+  .cartao-sabado .contagem.ambar { color: var(--ambar); }
+  .turno { border-top: 1px solid var(--borda); padding-top: 8px; }
+  .turno .nome-turno { font-size: 13px; color: var(--texto-suave); font-weight: 600; margin-bottom: 4px; }
+  .turno .etiqueta.minha { background: var(--verde); color: #fff; }
+  .turno .etiqueta button {
+    background: none; border: 0; color: inherit; padding: 0 0 0 4px; font-size: 14px; line-height: 1; cursor: pointer;
+  }
+  .cartao-sabado .acoes-cartao { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
+  .lista-datas { display: flex; flex-wrap: wrap; gap: 6px; }
+  .campo { display: block; margin-top: 12px; }
+  .campo select { width: 100%; min-height: 44px; padding: 8px; border: 1px solid var(--borda); border-radius: 8px; font: inherit; }
+</style>
+<script>
+/**
+ * Tela Sábados: um cartão por sábado do mês com turnos, contagem e cobertura por setor.
+ */
+(function () {
+  var estado = { mes: '' };
+
+  TELAS.sabados = {
+    titulo: 'Sábados',
+    descricao: 'Turnos 8h–11h e 9h–12h. Cada setor precisa de alguém.',
+    carregar: function (corpo) { return carregar(corpo); }
+  };
+
+  function carregar(corpo) {
+    corpo.innerHTML = '<div class="carregando">Carregando…</div>';
+    return api('obterSabados', estado.mes).then(function (d) {
+      estado.mes = d.mes;
+      corpo.innerHTML = '';
+
+      var barra = el(
+        '<div class="painel-barra">' +
+          '<div class="navegacao">' +
+            '<button type="button" class="botao secundario pequeno" data-ir="' + esc(d.anterior) + '" aria-label="Mês anterior">‹</button>' +
+            '<button type="button" class="botao discreto pequeno" data-ir="' + esc(d.atual) + '">Este mês</button>' +
+            '<button type="button" class="botao secundario pequeno" data-ir="' + esc(d.proximo) + '" aria-label="Próximo mês">›</button>' +
+          '</div>' +
+          '<span class="titulo-periodo">' + esc(d.titulo) + '</span>' +
+          '<span class="vazio" style="font-size:13px">mín. ' + d.minimo + ' · máx. ' + d.maximo + ' por sábado</span>' +
+        '</div>');
+      barra.querySelectorAll('[data-ir]').forEach(function (b) {
+        b.addEventListener('click', function () { estado.mes = b.dataset.ir; carregar(corpo); });
+      });
+      corpo.appendChild(barra);
+
+      var grade = el('<div class="sabados"></div>');
+      var lista = el('<div class="cartoes-sabado"></div>');
+      d.sabados.forEach(function (s) { lista.appendChild(cartao(s, d, corpo)); });
+      grade.appendChild(lista);
+      grade.appendChild(lateral(d));
+      corpo.appendChild(grade);
+    });
+  }
+
+  function etiquetaPessoa(p, s, d, corpo) {
+    var podeTirar = p.minha || d.souGestor;
+    var e = el('<span class="etiqueta' + (p.minha ? ' minha' : '') + '">' + esc(p.nome) +
+      (podeTirar ? '<button type="button" aria-label="Tirar ' + esc(p.nome) + ' da escala" title="Tirar da escala">✕</button>' : '') + '</span>');
+    if (podeTirar) {
+      e.querySelector('button').addEventListener('click', function () { cancelar(p, s, corpo); });
+    }
+    return e;
+  }
+
+  function turno(nome, pessoas, s, d, corpo) {
+    var t = el('<div class="turno"><div class="nome-turno">' + esc(nome) + '</div><div class="etiquetas"></div></div>');
+    var cont = t.querySelector('.etiquetas');
+    if (!pessoas.length) cont.innerHTML = '<span class="vazio">ninguém</span>';
+    pessoas.forEach(function (p) { cont.appendChild(etiquetaPessoa(p, s, d, corpo)); });
+    return t;
+  }
+
+  function cartao(s, d, corpo) {
+    var c = el('<div class="cartao cartao-sabado' + (s.bloqueado ? ' bloqueado' : '') + (s.passado ? ' passado' : '') + '"></div>');
+    c.innerHTML =
+      '<div class="topo"><h3>' + esc(s.rotulo) + '</h3>' +
+        (s.bloqueado ? '<span class="etiqueta cinza">' + esc(s.bloqueios.join('; ')) + '</span>'
+          : '<span class="contagem' + (s.contagemOk ? '' : ' ambar') + '">' + s.total + ' pessoa' + (s.total === 1 ? '' : 's') + '</span>') +
+      '</div>';
+
+    c.appendChild(turno('8h – 11h', s.turnos.t8, s, d, corpo));
+    c.appendChild(turno('9h – 12h', s.turnos.t9, s, d, corpo));
+    if (s.turnos.semTurno.length) c.appendChild(turno('Sem turno definido', s.turnos.semTurno, s, d, corpo));
+
+    if (!s.bloqueado) {
+      var setores = el('<div class="etiquetas" style="margin-top:4px"></div>');
+      s.setores.forEach(function (st) {
+        setores.appendChild(el('<span class="etiqueta ' + (st.coberto ? '' : 'contorno') + '" title="' + (st.coberto ? 'coberto' : 'sem ninguém') + '">' + esc(st.nome) + '</span>'));
+      });
+      c.appendChild(setores);
+    }
+    s.avisos.forEach(function (a) { c.appendChild(el('<div class="aviso">' + esc(a) + '</div>')); });
+
+    var acoes = el('<div class="acoes-cartao"></div>');
+    if (!s.minhaEscala) {
+      var b = el('<button type="button" class="botao' + (s.passado || s.bloqueado ? ' secundario' : '') + ' pequeno">Me escalar</button>');
+      b.addEventListener('click', function () { escalar(s, d, corpo, false); });
+      acoes.appendChild(b);
+    }
+    if (d.souGestor) {
+      var g = el('<button type="button" class="botao discreto pequeno">Escalar outra pessoa</button>');
+      g.addEventListener('click', function () { escalar(s, d, corpo, true); });
+      acoes.appendChild(g);
+    }
+    c.appendChild(acoes);
+    return c;
+  }
+
+  function escalar(s, d, corpo, outraPessoa) {
+    var m = abrirModal(
+      '<h2>Escalar para ' + esc(s.rotulo) + '</h2>' +
+      (outraPessoa
+        ? '<label class="campo">Pessoa<select id="escPessoa">' +
+            d.pessoas.map(function (p) { return '<option value="' + esc(p.email) + '">' + esc(p.nome) + '</option>'; }).join('') +
+          '</select></label>'
+        : '') +
+      '<div style="margin-top:12px">' +
+        '<label class="opcao"><input type="radio" name="turno" value="8-11" checked><span class="texto"><strong>8h – 11h</strong><span>' + s.turnos.t8.length + ' pessoa(s) neste turno</span></span></label>' +
+        '<label class="opcao"><input type="radio" name="turno" value="9-12"><span class="texto"><strong>9h – 12h</strong><span>' + s.turnos.t9.length + ' pessoa(s) neste turno</span></span></label>' +
+      '</div>' +
+      '<div class="acoes"><button type="button" class="botao secundario" data-acao="cancelar">Cancelar</button>' +
+      '<button type="button" class="botao" data-acao="salvar">Escalar</button></div>');
+    m.querySelector('[data-acao="cancelar"]').addEventListener('click', fecharModal);
+    m.querySelector('[data-acao="salvar"]').addEventListener('click', function () {
+      var dados = { data: s.data, turno: m.querySelector('input[name="turno"]:checked').value };
+      if (outraPessoa) dados.email = m.querySelector('#escPessoa').value;
+      fecharModal();
+      chamarComConfirmacao('escalarSabado', dados, 'Escalar mesmo assim').then(function (r) {
+        if (!r) return;
+        toast('Escala salva' + (r.avisosIgnorados ? ' (com aviso registrado)' : '') + '.');
+        carregar(corpo);
+        atualizarContadorAvisos();
+      }).catch(mostrarErro);
+    });
+  }
+
+  function cancelar(p, s, corpo) {
+    var quem = p.minha ? 'Sair da escala de ' + s.rotulo + '?' : 'Tirar ' + p.nome + ' da escala de ' + s.rotulo + '?';
+    var m = abrirModal('<h2>' + esc(quem) + '</h2>' +
+      '<div class="acoes"><button type="button" class="botao secundario" data-acao="nao">Voltar</button>' +
+      '<button type="button" class="botao" data-acao="sim">Confirmar</button></div>');
+    m.querySelector('[data-acao="nao"]').addEventListener('click', fecharModal);
+    m.querySelector('[data-acao="sim"]').addEventListener('click', function () {
+      fecharModal();
+      chamarComConfirmacao('cancelarSabado', p.id, 'Tirar mesmo assim').then(function (r) {
+        if (!r) return;
+        toast('Escala cancelada.');
+        carregar(corpo);
+        atualizarContadorAvisos();
+      }).catch(mostrarErro);
+    });
+  }
+
+  function lateral(d) {
+    var m = d.meusNoAno;
+    return el('<aside class="cartao"><h3>Seus sábados em ' + m.ano + '</h3>' +
+      '<div class="cartao-dia"><div class="numero">' + m.total + '</div></div>' +
+      (m.datas.length ? '<div class="lista-datas">' + m.datas.map(function (x) { return '<span class="etiqueta cinza">' + esc(x) + '</span>'; }).join('') + '</div>'
+        : '<p class="vazio">Nenhum sábado escalado este ano.</p>') +
+      '</aside>');
+  }
+})();
+</script>

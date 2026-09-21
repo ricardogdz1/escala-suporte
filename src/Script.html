@@ -58,6 +58,39 @@
   window.fecharModal = function () { raizModal.innerHTML = ''; };
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fecharModal(); });
 
+  // ---------- Avisos: "Cancelar / Salvar mesmo assim" ----------
+  /**
+   * Chama uma função do servidor que segue o padrão (dados, confirmado).
+   * Se vierem avisos, mostra a janela; resolve com a resposta final ou null se cancelou.
+   */
+  window.chamarComConfirmacao = function (funcao, dados, textoBotao) {
+    return api(funcao, dados, false).then(function (r) {
+      if (!r || !r.precisaConfirmar) return r;
+      return confirmarAvisos(r.avisos, textoBotao).then(function (ok) {
+        if (!ok) return null;
+        return api(funcao, dados, true);
+      });
+    });
+  };
+
+  window.confirmarAvisos = function (avisos, textoBotao) {
+    return new Promise(function (resolver) {
+      var m = abrirModal(
+        '<h2>Atenção</h2>' +
+        '<div class="aviso" style="flex-direction:column;gap:6px">' +
+          avisos.map(function (a) { return '<div>• ' + esc(a.texto) + '</div>'; }).join('') +
+        '</div>' +
+        '<p class="vazio" style="margin-top:12px">Avisos não impedem lançamentos. Se salvar, fica registrado que você viu este aviso.</p>' +
+        '<div class="acoes">' +
+          '<button type="button" class="botao secundario" data-acao="cancelar">Cancelar</button>' +
+          '<button type="button" class="botao ambar" data-acao="salvar">' + esc(textoBotao || 'Salvar mesmo assim') + '</button>' +
+        '</div>');
+      m.querySelector('[data-acao="cancelar"]').addEventListener('click', function () { fecharModal(); resolver(false); });
+      m.querySelector('[data-acao="salvar"]').addEventListener('click', function () { fecharModal(); resolver(true); });
+      m.querySelector('[data-acao="cancelar"]').focus();
+    });
+  };
+
   // ---------- Navegação ----------
   var menu = document.getElementById('menu');
   var cortina = document.getElementById('cortina');
@@ -103,8 +136,8 @@
   });
 
   // ---------- Telas ainda não construídas ----------
-  ['sabados', 'meiodia', 'homeoffice', 'ferias'].forEach(function (nome) {
-    var titulos = { sabados: 'Sábados', meiodia: 'Meio-dia e plantão', homeoffice: 'Home office', ferias: 'Férias' };
+  ['meiodia', 'homeoffice', 'ferias'].forEach(function (nome) {
+    var titulos = { meiodia: 'Meio-dia e plantão', homeoffice: 'Home office', ferias: 'Férias' };
     TELAS[nome] = {
       titulo: titulos[nome],
       carregar: function (corpo) {
