@@ -114,7 +114,7 @@ function meusSabadosNoAno_(email) {
 
 /**
  * Escala uma pessoa num sábado.
- * @param {Object} dados {data: "yyyy-MM-dd", turno: "8-11"|"9-12", email?: string (só gestor)}
+ * @param {Object} dados {data: "yyyy-MM-dd", turno: "8h-11h"|"9h-12h", email?: string (só gestor)}
  * @param {boolean} confirmado  true quando o usuário clicou em "Salvar mesmo assim"
  */
 function escalarSabado(dados, confirmado) {

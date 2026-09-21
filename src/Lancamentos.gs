@@ -3,6 +3,25 @@
  * Cada lançamento vira um objeto com datas já convertidas para Date.
  */
 
+/**
+ * Turno como está na célula -> código de TURNO.
+ * Aceita "8h-11h", "8-11", "8–11", "(11:00)" e também Date (célula "8-11" que o Planilhas
+ * converteu em 11/08): mês 8 dia 11 = 8h-11h, mês 9 dia 12 = 9h-12h.
+ */
+function normalizarTurno_(valor) {
+  if (valor instanceof Date) {
+    var m = valor.getMonth() + 1, d = valor.getDate();
+    if (m === 8 && d === 11) return TURNO.T8_11;
+    if (m === 9 && d === 12) return TURNO.T9_12;
+    return '';
+  }
+  var t = String(valor || '').trim().toLowerCase().replace(/\s/g, '');
+  if (!t) return '';
+  if (/^8h?[-–]11h?$|11:00/.test(t)) return TURNO.T8_11;
+  if (/^9h?[-–]12h?$|12:00/.test(t)) return TURNO.T9_12;
+  return t;
+}
+
 /** Linha da planilha -> objeto de lançamento. */
 function lancamentoDaLinha_(l) {
   return {
@@ -11,7 +30,7 @@ function lancamentoDaLinha_(l) {
     email: normalizarEmail_(l['E-mail']),
     inicio: paraData_(l['Data início']),
     fim: paraData_(l['Data fim']) || paraData_(l['Data início']),
-    turno: String(l['Turno'] || '').trim(),
+    turno: normalizarTurno_(l['Turno']),
     status: String(l['Status'] || '').trim().toLowerCase(),
     criadoPor: normalizarEmail_(l['Criado por']),
     criadoEm: l['Criado em'] instanceof Date ? l['Criado em'] : null,

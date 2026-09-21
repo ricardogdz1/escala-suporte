@@ -105,6 +105,7 @@ function aplicarFormatacao_(ss) {
   formatarColunas_(ss, ABA_LANCAMENTOS, ['Criado em', 'Atualizado em'], FORMATO_DATA_HORA, LINHAS);
   validarLista_(ss, ABA_LANCAMENTOS, 'Tipo', valoresDe_(TIPO), LINHAS);
   validarLista_(ss, ABA_LANCAMENTOS, 'Status', valoresDe_(STATUS), LINHAS);
+  formatarColunas_(ss, ABA_LANCAMENTOS, ['Turno'], '@', LINHAS); // texto puro: "8-11" viraria data
   validarLista_(ss, ABA_LANCAMENTOS, 'Turno', valoresDe_(TURNO), LINHAS);
 
   formatarColunas_(ss, ABA_BLOQUEIOS, ['Data início', 'Data fim'], FORMATO_DATA, LINHAS);
@@ -148,6 +149,30 @@ function validarLista_(ss, nomeAba, coluna, valores, linhas) {
 
 function valoresDe_(obj) {
   return Object.keys(obj).map(function (k) { return obj[k]; });
+}
+
+/**
+ * Corrige a coluna Turno de Lancamentos: células que viraram data (11/08, 12/09)
+ * ou usam a grafia antiga ("8-11") passam a "8h-11h" / "9h-12h" como texto.
+ */
+function corrigirTurnos() {
+  var aba = aba_(ABA_LANCAMENTOS);
+  var col = cabecalhoDaAba_(aba).indexOf('Turno') + 1;
+  var ultima = aba.getLastRow();
+  if (!col || ultima < 2) { Logger.log('Nada a corrigir.'); return; }
+
+  var faixa = aba.getRange(2, col, ultima - 1, 1);
+  faixa.setNumberFormat('@');
+  var valores = faixa.getValues();
+  var corrigidos = 0;
+  var novos = valores.map(function (linha) {
+    var atual = linha[0];
+    var novo = normalizarTurno_(atual);
+    if (atual instanceof Date || String(atual) !== novo) corrigidos++;
+    return [novo];
+  });
+  faixa.setValues(novos);
+  Logger.log('Turnos corrigidos: ' + corrigidos + ' de ' + valores.length + ' linhas.');
 }
 
 /** Menu na planilha para o gestor. */

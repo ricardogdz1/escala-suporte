@@ -9,7 +9,7 @@ Implementado em `src/Constantes.gs` (cabeçalhos) e `src/Setup.gs` (cria as abas
 
 ## Abas novas
 - **Config:** Chave | Valor | Descrição. Chaves: `MODO_TESTE` (Sim/Não), `EMAIL_TESTE`, `ID_CALENDARIO_TESTE`, `ID_CALENDARIO_PRODUCAO`, `DOMINIO`, `SABADO_MIN` (6), `SABADO_MAX` (8), `VAGAS_MEIO_DIA` (2), `VAGAS_PLANTAO` (1), `VAGAS_HOME_OFFICE` (1), `ANTECEDENCIA_FERIAS_DIAS` (35), `FERIAS_AVISO_PRAZO_DIAS` (60). Lidas por `obterConfig()` com cache de 5 min.
-- **Lancamentos:** ID | Tipo (SABADO, MEIO_DIA, PLANTAO, HOME_OFFICE, FERIAS) | E-mail | Data início | Data fim | Turno (8-11 / 9-12, só sábado) | Status (ativo, cancelado; férias: rascunho, solicitada, aprovada, encaminhada) | Criado por | Criado em | Atualizado em | ID evento agenda | Observação
+- **Lancamentos:** ID | Tipo (SABADO, MEIO_DIA, PLANTAO, HOME_OFFICE, FERIAS) | E-mail | Data início | Data fim | Turno (`8h-11h` / `9h-12h`, só sábado; com "h" porque o Planilhas converteria "8-11" em data) | Status (ativo, cancelado; férias: rascunho, solicitada, aprovada, encaminhada) | Criado por | Criado em | Atualizado em | ID evento agenda | Observação
 - **Bloqueios:** ID | Tipo (FERIADO, TREINAMENTO, SEMANA_PRESENCIAL, FERIAS_COLETIVAS) | Data início | Data fim | Descrição
 - **FilaHO:** E-mail | Setor | Tipo (USOU, PULOU) | Semana | Registrado em — histórico usado para calcular a fila.
 - **SaldoFerias:** E-mail | Saldo inicial | Prazo limite para gozo | Período aquisitivo

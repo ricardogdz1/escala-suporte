@@ -69,8 +69,8 @@ var TIPO = {
   FERIAS: 'FERIAS'
 };
 
-// Turnos do sábado
-var TURNO = { T8_11: '8-11', T9_12: '9-12' };
+// Turnos do sábado. Com "h" para o Planilhas não converter em data ("8-11" viraria 11/ago).
+var TURNO = { T8_11: '8h-11h', T9_12: '9h-12h' };
 
 // Status de lançamento
 var STATUS = {

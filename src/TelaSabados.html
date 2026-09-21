@@ -168,8 +168,8 @@
           '</select></label>'
         : '') +
       '<div style="margin-top:8px">' +
-        '<label class="opcao"><input type="radio" name="turno" value="8-11" checked><span class="texto"><strong>8h às 11h</strong><span>' + s.turnos.t8.length + ' pessoa(s) neste turno</span></span></label>' +
-        '<label class="opcao"><input type="radio" name="turno" value="9-12"><span class="texto"><strong>9h às 12h</strong><span>' + s.turnos.t9.length + ' pessoa(s) neste turno</span></span></label>' +
+        '<label class="opcao"><input type="radio" name="turno" value="8h-11h" checked><span class="texto"><strong>8h às 11h</strong><span>' + s.turnos.t8.length + ' pessoa(s) neste turno</span></span></label>' +
+        '<label class="opcao"><input type="radio" name="turno" value="9h-12h"><span class="texto"><strong>9h às 12h</strong><span>' + s.turnos.t9.length + ' pessoa(s) neste turno</span></span></label>' +
       '</div>' +
       '<div class="acoes"><button type="button" class="botao neutro" data-acao="cancelar">Cancelar</button>' +
       '<button type="button" class="botao escuro" data-acao="salvar">Confirmar</button></div>';
@@ -182,7 +182,7 @@
       painel.querySelector('[data-acao="salvar"]').disabled = true;
       chamarComConfirmacao('escalarSabado', dados, {
         painel: painel, textoBotao: 'Salvar mesmo assim', titulo: 'Confirmar escala',
-        subtitulo: rotuloData(s) + ' · ' + (turno === '8-11' ? '8h às 11h' : '9h às 12h')
+        subtitulo: rotuloData(s) + ' · ' + (turno === '8h-11h' ? '8h às 11h' : '9h às 12h')
       }).then(function (r) {
         painel.classList.add('oculto'); painel.innerHTML = '';
         if (!r) return;
