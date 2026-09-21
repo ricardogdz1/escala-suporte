@@ -23,8 +23,7 @@ function setup() {
   });
 
   // 2. Abas do sistema: cria as que faltam e completa cabeçalhos
-  [ABA_CONFIG, ABA_LANCAMENTOS, ABA_BLOQUEIOS, ABA_FILA_HO,
-   ABA_SALDO_FERIAS, ABA_TROCAS, ABA_AVISOS_IGNORADOS].forEach(function (nome) {
+  ABAS_DO_SISTEMA.forEach(function (nome) {
     relatorio.push(nome + ': ' + garantirAba_(ss, nome, CABECALHOS[nome]));
   });
 
@@ -119,6 +118,7 @@ function aplicarFormatacao_(ss) {
   formatarColunas_(ss, ABA_TROCAS, ['Criada em', 'Respondida em'], FORMATO_DATA_HORA, LINHAS);
 
   formatarColunas_(ss, ABA_AVISOS_IGNORADOS, ['Quando'], FORMATO_DATA_HORA, LINHAS);
+  formatarColunas_(ss, ABA_LOG_NOTIFICACOES, ['Quando'], FORMATO_DATA_HORA, LINHAS);
 
   var config = ss.getSheetByName(ABA_CONFIG);
   config.setColumnWidth(1, 220);

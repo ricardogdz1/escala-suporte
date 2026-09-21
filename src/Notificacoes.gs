@@ -1,0 +1,226 @@
+/**
+ * Ponto único de saída do sistema: e-mails e eventos de agenda.
+ * NENHUM outro arquivo chama MailApp/GmailApp/CalendarApp diretamente.
+ *
+ * Modo teste (Config > MODO_TESTE = Sim):
+ *  - todo e-mail vai só para EMAIL_TESTE, com o assunto prefixado e os
+ *    destinatários originais listados no corpo;
+ *  - todo evento vai para o calendário ID_CALENDARIO_TESTE (ou a agenda da
+ *    conta que roda o sistema, se vazio) e o único convidado é EMAIL_TESTE.
+ * Tudo que sai fica registrado na aba LogNotificacoes.
+ */
+
+// ---------- E-mail ----------
+
+/**
+ * Envia um e-mail.
+ * @param {Object} o  {para: string|string[], cc?: string|string[], assunto: string,
+ *                     corpoHtml?: string, corpoTexto?: string, origem?: string}
+ * @return {Object} {enviado: boolean, destinatarioReal: string, modoTeste: boolean}
+ */
+function enviarEmail_(o) {
+  var para = listaEmails_(o.para);
+  var cc = listaEmails_(o.cc);
+  var assunto = o.assunto || '(sem assunto)';
+  var corpoTexto = o.corpoTexto || removerHtml_(o.corpoHtml || '');
+  var corpoHtml = o.corpoHtml || '<pre>' + escaparHtml_(corpoTexto) + '</pre>';
+  var teste = modoTeste();
+
+  var destinoPara = para;
+  var destinoCc = cc;
+
+  if (teste) {
+    var emailTeste = String(obterConfig('EMAIL_TESTE')).trim();
+    if (!emailTeste) throw new Error('Modo teste ligado, mas Config > EMAIL_TESTE está vazio.');
+    var aviso = 'MODO TESTE – destinatários originais: para=' + (para.join(', ') || '-') +
+      (cc.length ? '; cc=' + cc.join(', ') : '');
+    assunto = '[TESTE] ' + assunto;
+    corpoTexto = aviso + '\n\n' + corpoTexto;
+    corpoHtml = '<p style="background:#FBEFD9;color:#8A4B08;padding:8px;border-radius:6px">' +
+      escaparHtml_(aviso) + '</p>' + corpoHtml;
+    destinoPara = [emailTeste];
+    destinoCc = [];
+  }
+
+  if (!destinoPara.length) {
+    registrarNotificacao_('EMAIL', o.origem, para.concat(cc).join(', '), '', assunto, 'ignorado: sem destinatário');
+    return { enviado: false, destinatarioReal: '', modoTeste: teste };
+  }
+
+  var opcoes = { htmlBody: corpoHtml, name: 'Escala Suporte' };
+  if (destinoCc.length) opcoes.cc = destinoCc.join(',');
+  MailApp.sendEmail(destinoPara.join(','), assunto, corpoTexto, opcoes);
+
+  registrarNotificacao_('EMAIL', o.origem, para.concat(cc).join(', '), destinoPara.join(', '), assunto, 'enviado');
+  return { enviado: true, destinatarioReal: destinoPara.join(', '), modoTeste: teste };
+}
+
+// ---------- Agenda ----------
+
+/** Calendário onde os eventos são criados, conforme o modo. */
+function calendario_() {
+  var id = String(obterConfig(modoTeste() ? 'ID_CALENDARIO_TESTE' : 'ID_CALENDARIO_PRODUCAO')).trim();
+  if (!id) {
+    if (modoTeste()) return CalendarApp.getDefaultCalendar();
+    throw new Error('Config > ID_CALENDARIO_PRODUCAO está vazio. Cadastre o calendário "Escala Suporte".');
+  }
+  var cal = CalendarApp.getCalendarById(id);
+  if (!cal) throw new Error('Calendário não encontrado ou sem acesso: ' + id);
+  return cal;
+}
+
+/**
+ * Cria um evento e devolve o ID (guardar em Lancamentos > ID evento agenda).
+ * @param {Object} o {titulo, inicio: Date, fim: Date, diaInteiro?: boolean,
+ *                    descricao?: string, convidados?: string[], origem?: string}
+ * @return {string} ID do evento
+ */
+function criarEvento_(o) {
+  var cal = calendario_();
+  var convidadosOriginais = listaEmails_(o.convidados);
+  var convidados = convidadosReais_(convidadosOriginais);
+
+  var opcoes = { description: o.descricao || '' };
+  if (convidados.length) {
+    opcoes.guests = convidados.join(',');
+    opcoes.sendInvites = true;
+  }
+
+  var evento;
+  if (o.diaInteiro) {
+    // fim é exclusivo no CalendarApp: dia seguinte ao último dia
+    var fimExclusivo = new Date(o.fim.getFullYear(), o.fim.getMonth(), o.fim.getDate() + 1);
+    evento = cal.createAllDayEvent(o.titulo, o.inicio, fimExclusivo, opcoes);
+  } else {
+    evento = cal.createEvent(o.titulo, o.inicio, o.fim, opcoes);
+  }
+
+  registrarNotificacao_('EVENTO', o.origem, convidadosOriginais.join(', '), convidados.join(', '),
+    o.titulo + ' (' + formatarDataBr_(o.inicio) + ')', 'criado ' + evento.getId());
+  return evento.getId();
+}
+
+/** Atualiza título/datas/descrição de um evento existente. Retorna false se não achou. */
+function atualizarEvento_(idEvento, o) {
+  var evento = buscarEvento_(idEvento);
+  if (!evento) return false;
+  if (o.titulo) evento.setTitle(o.titulo);
+  if (o.descricao !== undefined) evento.setDescription(o.descricao);
+  if (o.inicio && o.fim) {
+    if (o.diaInteiro) {
+      var fimExclusivo = new Date(o.fim.getFullYear(), o.fim.getMonth(), o.fim.getDate() + 1);
+      evento.setAllDayDates(o.inicio, fimExclusivo);
+    } else {
+      evento.setTime(o.inicio, o.fim);
+    }
+  }
+  registrarNotificacao_('EVENTO', o.origem, '', '', evento.getTitle(), 'atualizado ' + idEvento);
+  return true;
+}
+
+/** Remove um evento. Retorna false se não achou (já removido, por exemplo). */
+function removerEvento_(idEvento, origem) {
+  var evento = buscarEvento_(idEvento);
+  if (!evento) return false;
+  var titulo = evento.getTitle();
+  evento.deleteEvent();
+  registrarNotificacao_('EVENTO', origem, '', '', titulo, 'removido ' + idEvento);
+  return true;
+}
+
+function buscarEvento_(idEvento) {
+  if (!idEvento) return null;
+  try {
+    return calendario_().getEventById(idEvento);
+  } catch (e) {
+    return null;
+  }
+}
+
+/** Em modo teste, o único convidado possível é EMAIL_TESTE. */
+function convidadosReais_(convidados) {
+  if (!modoTeste()) return convidados;
+  var emailTeste = String(obterConfig('EMAIL_TESTE')).trim();
+  if (!emailTeste) throw new Error('Modo teste ligado, mas Config > EMAIL_TESTE está vazio.');
+  return convidados.length ? [emailTeste] : [];
+}
+
+// ---------- Log ----------
+
+function registrarNotificacao_(tipo, origem, originais, real, assunto, resultado) {
+  try {
+    anexarLinha_(ABA_LOG_NOTIFICACOES, {
+      'Quando': new Date(),
+      'Tipo': tipo,
+      'Origem': origem || '',
+      'Destinatários originais': originais,
+      'Destinatário real': real,
+      'Assunto/título': assunto,
+      'Resultado': resultado
+    });
+  } catch (e) {
+    // log nunca pode derrubar a operação principal
+    Logger.log('Falha ao registrar notificação: ' + e.message);
+  }
+}
+
+// ---------- Utilitários ----------
+
+function listaEmails_(valor) {
+  if (!valor) return [];
+  var lista = Array.isArray(valor) ? valor : String(valor).split(/[,;]/);
+  var vistos = {};
+  return lista.map(normalizarEmail_).filter(function (e) {
+    if (!e || vistos[e]) return false;
+    vistos[e] = true;
+    return true;
+  });
+}
+
+function escaparHtml_(texto) {
+  return String(texto).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function removerHtml_(html) {
+  return String(html)
+    .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+}
+
+// ---------- Teste manual (rodar no editor) ----------
+
+/**
+ * Envia um e-mail e cria um evento de teste para conferir o modo teste.
+ * Com MODO_TESTE = Sim, o e-mail e o convite chegam só em EMAIL_TESTE,
+ * mesmo com destinatários "falsos" abaixo.
+ */
+function testarNotificacoes() {
+  var r = enviarEmail_({
+    para: ['colega.exemplo@' + obterConfig('DOMINIO')],
+    assunto: 'Teste do Escala Suporte',
+    corpoHtml: '<p>Se você recebeu este e-mail, o envio central está funcionando.</p>',
+    origem: 'testarNotificacoes'
+  });
+
+  var amanha = new Date();
+  amanha.setDate(amanha.getDate() + 1);
+  amanha.setHours(8, 0, 0, 0);
+  var fim = new Date(amanha.getTime());
+  fim.setHours(11, 0, 0, 0);
+
+  var idEvento = criarEvento_({
+    titulo: '[TESTE] Escala Suporte – sábado 8h–11h',
+    inicio: amanha,
+    fim: fim,
+    descricao: 'Evento de teste. Pode apagar.',
+    convidados: ['colega.exemplo@' + obterConfig('DOMINIO')],
+    origem: 'testarNotificacoes'
+  });
+
+  Logger.log('E-mail: ' + JSON.stringify(r));
+  Logger.log('Evento criado: ' + idEvento + ' no calendário "' + calendario_().getName() + '"');
+  Logger.log('Confira a aba ' + ABA_LOG_NOTIFICACOES + '.');
+}

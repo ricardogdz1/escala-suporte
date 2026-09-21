@@ -16,6 +16,13 @@ var ABA_FILA_HO = 'FilaHO';
 var ABA_SALDO_FERIAS = 'SaldoFerias';
 var ABA_TROCAS = 'Trocas';
 var ABA_AVISOS_IGNORADOS = 'AvisosIgnorados';
+var ABA_LOG_NOTIFICACOES = 'LogNotificacoes';
+
+// Abas do sistema, na ordem em que o setup() as cria
+var ABAS_DO_SISTEMA = [
+  ABA_CONFIG, ABA_LANCAMENTOS, ABA_BLOQUEIOS, ABA_FILA_HO,
+  ABA_SALDO_FERIAS, ABA_TROCAS, ABA_AVISOS_IGNORADOS, ABA_LOG_NOTIFICACOES
+];
 
 // Cabeçalhos de cada aba criada pelo setup(). A ordem define as colunas.
 var CABECALHOS = {};
@@ -32,6 +39,9 @@ CABECALHOS[ABA_TROCAS] = [
   'Lançamento do destinatário', 'Status', 'Criada em', 'Respondida em'
 ];
 CABECALHOS[ABA_AVISOS_IGNORADOS] = ['Quando', 'E-mail', 'Lançamento', 'Código do aviso', 'Texto do aviso'];
+CABECALHOS[ABA_LOG_NOTIFICACOES] = [
+  'Quando', 'Tipo', 'Origem', 'Destinatários originais', 'Destinatário real', 'Assunto/título', 'Resultado'
+];
 
 // Cabeçalhos esperados nas abas de cadastro (só para validar no setup)
 CABECALHOS[ABA_PESSOAS] = [
