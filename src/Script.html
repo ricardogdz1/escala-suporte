@@ -1,7 +1,8 @@
 <script>
 /**
  * Base do cliente: navegação, chamadas ao servidor, avisos e modais.
- * Cada tela registra-se em TELAS com {titulo, descricao, carregar(container)}.
+ * Cada tela registra-se em TELAS com {titulo, descricao, sobrelinha?, carregar(corpo, acoes)}.
+ *   - titulo/descricao/sobrelinha podem ser função (recebem nada) para textos dinâmicos.
  */
 (function () {
   var TELAS = window.TELAS = {};
@@ -19,7 +20,7 @@
     });
   };
 
-  // ---------- Utilitários de HTML ----------
+  // ---------- Utilitários ----------
   window.esc = function (texto) {
     return String(texto == null ? '' : texto).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -29,6 +30,26 @@
     var t = document.createElement('template');
     t.innerHTML = html.trim();
     return t.content.firstElementChild;
+  };
+  /** Lista de nomes em texto: "Ana, Bia e Caio". */
+  window.listaNomes = function (nomes) {
+    if (!nomes.length) return '';
+    if (nomes.length === 1) return nomes[0];
+    return nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1];
+  };
+  /** HTML de um aviso {titulo, texto} ou string. */
+  window.htmlAviso = function (a) {
+    if (typeof a === 'string') return '<div class="aviso"><div>' + esc(a) + '</div></div>';
+    return '<div class="aviso"><div><strong>' + esc(a.titulo || a.texto) + '</strong>' +
+      (a.titulo && a.texto ? '<div class="explicacao">' + esc(a.texto) + '</div>' : '') + '</div></div>';
+  };
+  window.MESES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  window.MESES_NOME = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  window.DIAS_NOME = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  /** "yyyy-MM-dd" -> Date local. */
+  window.dataDe = function (iso) {
+    var p = String(iso).split('-');
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
   };
 
   // ---------- Mensagens ----------
@@ -61,33 +82,47 @@
   // ---------- Avisos: "Cancelar / Salvar mesmo assim" ----------
   /**
    * Chama uma função do servidor que segue o padrão (dados, confirmado).
-   * Se vierem avisos, mostra a janela; resolve com a resposta final ou null se cancelou.
+   * Se vierem avisos, mostra a confirmação; resolve com a resposta final ou null se cancelou.
+   * opcoes: {textoBotao, painel: elemento onde desenhar a confirmação (senão usa modal), titulo, subtitulo}
    */
-  window.chamarComConfirmacao = function (funcao, dados, textoBotao) {
+  window.chamarComConfirmacao = function (funcao, dados, opcoes) {
+    opcoes = opcoes || {};
     return api(funcao, dados, false).then(function (r) {
       if (!r || !r.precisaConfirmar) return r;
-      return confirmarAvisos(r.avisos, textoBotao).then(function (ok) {
+      return confirmarAvisos(r.avisos, opcoes).then(function (ok) {
         if (!ok) return null;
         return api(funcao, dados, true);
       });
     });
   };
 
-  window.confirmarAvisos = function (avisos, textoBotao) {
+  window.confirmarAvisos = function (avisos, opcoes) {
+    opcoes = opcoes || {};
+    var html =
+      '<h2>' + esc(opcoes.titulo || 'Atenção') + '</h2>' +
+      (opcoes.subtitulo ? '<p class="nota" style="margin-top:-6px">' + esc(opcoes.subtitulo) + '</p>' : '') +
+      '<div class="lista-avisos" style="margin-top:12px">' + avisos.map(htmlAviso).join('') + '</div>' +
+      '<p class="nota" style="margin-top:12px">Avisos não impedem lançamentos. Se salvar, fica registrado que você viu este aviso.</p>' +
+      '<div class="acoes">' +
+        '<button type="button" class="botao neutro" data-acao="cancelar">Cancelar</button>' +
+        '<button type="button" class="botao escuro" data-acao="salvar">' + esc(opcoes.textoBotao || 'Salvar mesmo assim') + '</button>' +
+      '</div>';
     return new Promise(function (resolver) {
-      var m = abrirModal(
-        '<h2>Atenção</h2>' +
-        '<div class="aviso" style="flex-direction:column;gap:6px">' +
-          avisos.map(function (a) { return '<div>• ' + esc(a.texto) + '</div>'; }).join('') +
-        '</div>' +
-        '<p class="vazio" style="margin-top:12px">Avisos não impedem lançamentos. Se salvar, fica registrado que você viu este aviso.</p>' +
-        '<div class="acoes">' +
-          '<button type="button" class="botao secundario" data-acao="cancelar">Cancelar</button>' +
-          '<button type="button" class="botao ambar" data-acao="salvar">' + esc(textoBotao || 'Salvar mesmo assim') + '</button>' +
-        '</div>');
-      m.querySelector('[data-acao="cancelar"]').addEventListener('click', function () { fecharModal(); resolver(false); });
-      m.querySelector('[data-acao="salvar"]').addEventListener('click', function () { fecharModal(); resolver(true); });
-      m.querySelector('[data-acao="cancelar"]').focus();
+      var alvo;
+      var fechar;
+      if (opcoes.painel) {
+        alvo = opcoes.painel;
+        alvo.innerHTML = html;
+        alvo.classList.remove('oculto');
+        alvo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        fechar = function () { alvo.innerHTML = ''; alvo.classList.add('oculto'); };
+      } else {
+        alvo = abrirModal(html);
+        fechar = fecharModal;
+      }
+      alvo.querySelector('[data-acao="cancelar"]').addEventListener('click', function () { fechar(); resolver(false); });
+      alvo.querySelector('[data-acao="salvar"]').addEventListener('click', function () { fechar(); resolver(true); });
+      alvo.querySelector('[data-acao="cancelar"]').focus();
     });
   };
 
@@ -104,9 +139,27 @@
   botaoMenu.addEventListener('click', function () { alternarMenu(!menu.classList.contains('aberto')); });
   cortina.addEventListener('click', function () { alternarMenu(false); });
 
-  window.irPara = function (nome) {
+  function texto(v) { return typeof v === 'function' ? v() : (v || ''); }
+
+  /** Redesenha o cabeçalho da tela atual (para títulos que mudam com o período). */
+  window.atualizarCabecalho = function (dados) {
+    var tela = TELAS[telaAtual];
+    var cab = document.getElementById('cabecalhoTela');
+    if (!tela || !cab) return;
+    var sobrelinha = texto(dados && dados.sobrelinha !== undefined ? dados.sobrelinha : tela.sobrelinha);
+    var titulo = texto(dados && dados.titulo ? dados.titulo : tela.titulo);
+    var descricao = texto(dados && dados.descricao !== undefined ? dados.descricao : tela.descricao);
+    cab.innerHTML =
+      (sobrelinha ? '<div class="sobrelinha">' + esc(sobrelinha) + '</div>' : '') +
+      '<h1>' + esc(titulo) + '</h1>' +
+      (descricao ? '<p class="descricao">' + esc(descricao) + '</p>' : '');
+  };
+
+  /** Abre uma tela; parametros (opcional) fica em tela.parametros para a tela usar (ex.: {mes: "2026-10"}). */
+  window.irPara = function (nome, parametros) {
     var tela = TELAS[nome];
     if (!tela) { nome = 'painel'; tela = TELAS[nome]; }
+    tela.parametros = parametros || null;
     telaAtual = nome;
     alternarMenu(false);
 
@@ -116,10 +169,9 @@
     });
 
     conteudo.innerHTML =
-      '<div class="cabecalho-tela"><div><h1>' + esc(tela.titulo) + '</h1>' +
-      (tela.descricao ? '<p class="descricao">' + esc(tela.descricao) + '</p>' : '') +
-      '</div><div id="acoesTela"></div></div>' +
+      '<div class="cabecalho-tela"><div id="cabecalhoTela"></div><div class="acoes-tela" id="acoesTela"></div></div>' +
       '<div id="corpoTela"><div class="carregando">Carregando…</div></div>';
+    atualizarCabecalho();
     window.scrollTo(0, 0);
 
     Promise.resolve()
@@ -146,22 +198,29 @@
     };
   });
 
+  // ---------- Avatar ----------
+  (function () {
+    var partes = String(window.USUARIO.nomeExibicao || window.USUARIO.nome || '?').replace(/\./g, '').trim().split(/\s+/);
+    var iniciais = partes.length > 1 ? partes[0][0] + partes[partes.length - 1][0] : partes[0].substring(0, 2);
+    document.getElementById('avatar').textContent = iniciais.toUpperCase();
+  })();
+
   // ---------- Preferências de notificação ----------
   document.getElementById('botaoPreferencias').addEventListener('click', function () {
     alternarMenu(false);
     var m = abrirModal(
       '<h2>Notificações</h2>' +
-      '<p class="vazio">Escolha o que você quer receber. Seus lançamentos continuam valendo do mesmo jeito.</p>' +
+      '<p class="nota">Escolha o que você quer receber. Seus lançamentos continuam valendo do mesmo jeito.</p>' +
       '<div class="carregando">Carregando…</div>');
     api('obterMinhasPreferencias').then(function (p) {
       m.innerHTML =
         '<h2>Notificações</h2>' +
-        '<p class="vazio">Escolha o que você quer receber. Seus lançamentos continuam valendo do mesmo jeito.</p>' +
+        '<p class="nota">Escolha o que você quer receber. Seus lançamentos continuam valendo do mesmo jeito.</p>' +
         '<label class="opcao"><input type="checkbox" id="prefEmails"' + (p.emails ? ' checked' : '') + '>' +
           '<span class="texto"><strong>Receber e-mails</strong><span>Confirmações, trocas propostas e avisos.</span></span></label>' +
         '<label class="opcao"><input type="checkbox" id="prefAgenda"' + (p.agenda ? ' checked' : '') + '>' +
           '<span class="texto"><strong>Convites na Google Agenda</strong><span>Sábados, plantões, meio-dia e home office aparecem na sua agenda.</span></span></label>' +
-        '<div class="acoes"><button type="button" class="botao secundario" id="prefCancelar">Cancelar</button>' +
+        '<div class="acoes"><button type="button" class="botao neutro" id="prefCancelar">Cancelar</button>' +
         '<button type="button" class="botao" id="prefSalvar">Salvar</button></div>';
       m.querySelector('#prefCancelar').addEventListener('click', fecharModal);
       m.querySelector('#prefSalvar').addEventListener('click', function () {

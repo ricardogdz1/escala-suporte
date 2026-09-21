@@ -9,3 +9,6 @@ referencia/*.csv
 
 node_modules/
 .DS_Store
+
+# Prévia local das telas (gerada)
+.previa/

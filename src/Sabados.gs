@@ -69,37 +69,47 @@ function montarSabado_(data, c, u) {
 
   var semCobertura = setoresSemCobertura_(escalados, c);
   var total = escalados.length;
-  var avisos = [];
-  if (!bloqueado) {
-    if (total > 0 && total < c.min) avisos.push(total + ' pessoa' + (total > 1 ? 's' : '') + ' (mín. ' + c.min + ')');
-    if (total > c.max) avisos.push(total + ' pessoas (máx. ' + c.max + ')');
-    if (total > 0 && semCobertura.length) avisos.push('Sem ninguém de: ' + semCobertura.join(', '));
-  }
+  var contagemOk = total >= c.min && total <= c.max;
+  var contagemTexto;
+  if (total < c.min) contagemTexto = total + ' de ' + c.min + ' mín.';
+  else if (total > c.max) contagemTexto = total + ' pessoas (máx. ' + c.max + ')';
+  else contagemTexto = total + ' pessoa' + (total === 1 ? '' : 's');
 
   var minha = escalados.filter(function (x) { return x.email === u.email; })[0];
 
   return {
     data: formatarDataIso_(data),
     rotulo: formatarDataBr_(data),
+    dia: data.getDate(),
     passado: data.getTime() < c.hoje.getTime(),
     bloqueado: bloqueado,
     bloqueios: bloqueios.map(function (b) { return b.descricao || b.tipo; }),
     turnos: porTurno,
     total: total,
-    contagemOk: !bloqueado && total >= c.min && total <= c.max,
+    contagemOk: contagemOk,
+    contagemTexto: contagemTexto,
     setores: c.setoresAtivos.map(function (s) { return { nome: s, coberto: semCobertura.indexOf(s) < 0 }; }),
-    minhaEscala: minha ? { id: minha.id, turno: minha.turno } : null,
-    avisos: avisos
+    problema: !bloqueado && (!contagemOk || (total > 0 && semCobertura.length > 0)),
+    minhaEscala: minha ? { id: minha.id, turno: minha.turno } : null
   };
 }
 
 function meusSabadosNoAno_(email) {
-  var ano = hoje_().getFullYear();
+  var hoje = hoje_();
+  var ano = hoje.getFullYear();
   var datas = listarLancamentos_({
     tipos: [TIPO.SABADO], status: [STATUS.ATIVO], email: email,
     de: new Date(ano, 0, 1), ate: new Date(ano, 11, 31)
-  }).map(function (x) { return formatarDataBr_(x.inicio); });
-  return { ano: ano, total: datas.length, datas: datas };
+  }).map(function (x) { return x.inicio; }).sort(function (a, b) { return a - b; });
+  var passados = datas.filter(function (d) { return d.getTime() < hoje.getTime(); });
+  var futuros = datas.filter(function (d) { return d.getTime() >= hoje.getTime(); });
+  return {
+    ano: ano,
+    total: datas.length,
+    ultimo: passados.length ? formatarDataBr_(passados[passados.length - 1]).substring(0, 5) : '',
+    proximo: futuros.length ? formatarDataBr_(futuros[0]).substring(0, 5) : '',
+    agendados: futuros.length
+  };
 }
 
 /**
@@ -129,26 +139,29 @@ function escalarSabado(dados, confirmado) {
     throw new Error(nomeAlvo + ' já está neste turno desse sábado.');
   }
 
+  var dataBr = formatarDataBr_(data).substring(0, 5);
   var avisos = [];
   var bloqueios = bloqueiosDoDia_(c.bloqueios, data).filter(function (b) {
     return b.tipo === BLOQUEIO.TREINAMENTO || b.tipo === BLOQUEIO.FERIADO;
   });
   if (bloqueios.length) {
-    avisos.push(aviso_('SABADO_BLOQUEADO', 'Este sábado está bloqueado: ' +
-      bloqueios.map(function (b) { return b.descricao || b.tipo; }).join('; ')));
+    avisos.push(aviso_('SABADO_BLOQUEADO', 'Sábado ' + dataBr + ' está bloqueado',
+      bloqueios.map(function (b) { return b.descricao || b.tipo; }).join('; ') + '. Escalas neste dia geram aviso.'));
   }
   if (data.getTime() < c.hoje.getTime()) {
-    avisos.push(aviso_('SABADO_PASSADO', 'Esse sábado já passou.'));
+    avisos.push(aviso_('SABADO_PASSADO', 'Esse sábado já passou', 'O lançamento vale como registro do que aconteceu.'));
   }
   if (jaEscalado.length) {
-    avisos.push(aviso_('SABADO_JA_ESCALADO', nomeAlvo + ' já está escalado no outro turno desse sábado.'));
+    avisos.push(aviso_('SABADO_JA_ESCALADO', nomeAlvo + ' já está no outro turno',
+      'Ficará nos dois turnos do sábado ' + dataBr + '.'));
   }
   if (estaDeFerias_(c.lancamentos, email, data)) {
-    avisos.push(aviso_('SABADO_FERIAS', nomeAlvo + ' está de férias nesse dia.'));
+    avisos.push(aviso_('SABADO_FERIAS', nomeAlvo + ' está de férias nesse dia', 'Há férias aprovadas cobrindo ' + dataBr + '.'));
   }
   var totalDepois = escalados.length + 1;
   if (totalDepois > c.max) {
-    avisos.push(aviso_('SABADO_ACIMA_MAX', 'Com mais essa pessoa o sábado fica com ' + totalDepois + ' (máx. ' + c.max + ').'));
+    avisos.push(aviso_('SABADO_ACIMA_MAX', 'Sábado já está no máximo',
+      dataBr + ' já tem ' + escalados.length + ' pessoas. Com ' + (email === u.email ? 'você' : pessoa.nomeExibicao) + ', ficam ' + totalDepois + '.'));
   }
 
   if (avisos.length && !confirmado) return respostaComAvisos_(avisos);
@@ -193,19 +206,21 @@ function cancelarSabado(id, confirmado) {
   var restantes = escaladosNoSabado_(c, lanc.inicio).filter(function (x) { return x.id !== id; });
   var quem = lanc.email === u.email ? 'você' : nomeDe_(c.pessoas, lanc.email);
 
+  var dataBr = formatarDataBr_(lanc.inicio).substring(0, 5);
   var avisos = [];
   if (lanc.inicio.getTime() < c.hoje.getTime()) {
-    avisos.push(aviso_('SABADO_PASSADO', 'Esse sábado já passou.'));
+    avisos.push(aviso_('SABADO_PASSADO', 'Esse sábado já passou', 'Cancelar altera o registro do que aconteceu.'));
   }
   if (restantes.length < c.min) {
-    avisos.push(aviso_('SABADO_ABAIXO_MIN', 'Sem ' + quem + ' o sábado fica com ' + restantes.length + ' pessoa' +
-      (restantes.length === 1 ? '' : 's') + ' (mín. ' + c.min + ').'));
+    avisos.push(aviso_('SABADO_ABAIXO_MIN', 'Sábado ' + dataBr + ' fica com ' + restantes.length + ' pessoa' + (restantes.length === 1 ? '' : 's'),
+      'Sem ' + quem + ' o sábado fica abaixo do mínimo de ' + c.min + '.'));
   }
   var semCobertura = setoresSemCobertura_(restantes, c);
   var antes = setoresSemCobertura_(restantes.concat([lanc]), c);
   var novosDescobertos = semCobertura.filter(function (s) { return antes.indexOf(s) < 0; });
   if (novosDescobertos.length) {
-    avisos.push(aviso_('SABADO_SETOR_DESCOBERTO', 'Sem ' + quem + ' ninguém cobre: ' + novosDescobertos.join(', ') + '.'));
+    avisos.push(aviso_('SABADO_SETOR_DESCOBERTO', 'Sábado ' + dataBr + ' sem ' + novosDescobertos.join(', '),
+      'Sem ' + quem + ' nenhuma pessoa cobre esse setor.'));
   }
 
   if (avisos.length && !confirmado) return respostaComAvisos_(avisos);

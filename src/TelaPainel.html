@@ -1,31 +1,28 @@
 <style>
-  .painel { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
-  @media (max-width: 1000px) { .painel { grid-template-columns: 1fr; } }
-  .painel-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
-  .painel-barra .navegacao { display: inline-flex; align-items: center; gap: 4px; }
-  .painel-barra .titulo-periodo { font-family: var(--fonte-titulo); font-weight: 600; font-size: 17px; min-width: 200px; }
-  .cartao-dia .numero { font-family: var(--fonte-titulo); font-size: 30px; font-weight: 700; line-height: 1; margin-bottom: 8px; }
-  .cartao-dia .numero.ambar { color: var(--ambar); }
-  .cartao-dia .horario { color: var(--texto-suave); font-size: 13px; margin-bottom: 8px; }
-  .lista-avisos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-  .lista-avisos li { display: flex; gap: 8px; align-items: baseline; font-size: 14px; }
-  .lista-avisos .quando { color: var(--texto-suave); font-size: 13px; white-space: nowrap; }
-  .tabela .nomes { display: flex; flex-wrap: wrap; gap: 4px; }
-  .tabela .dia { white-space: nowrap; font-weight: 500; }
-  .tabela tr.fim-de-semana td { color: var(--texto-suave); }
-  .tabela tr.feriado td.dia::after { content: ' · feriado'; color: var(--ambar); font-weight: 400; }
+  .cartao-dia { display: flex; flex-direction: column; gap: 12px; min-height: 120px; }
+  .cartao-dia .topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .cartao-dia .topo h3 { font-family: var(--fonte-texto); font-size: 16px; font-weight: 700; }
+  .cartao-dia .topo .quando { color: var(--texto-suave); font-size: 14px; white-space: nowrap; }
+  .painel-lateral .topo-avisos { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .painel-lateral .lista-avisos .aviso { cursor: pointer; }
+  .painel-lateral .lista-avisos .aviso:hover { background: #F7E4C3; }
+  .painel-lateral .rodape { margin-top: auto; padding-top: 18px; }
+  .painel-lateral.cartao { display: flex; flex-direction: column; min-height: 100%; }
+  .barra-periodo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .barra-periodo h2 { font-size: 22px; }
+  .tabela .nomes { line-height: 1.5; }
 </style>
 <script>
 /**
  * Tela Painel – "quem está onde".
- * Alterna Hoje / Semana / Mês, navega entre períodos e lista os avisos abertos.
+ * Hoje = 4 cartões do dia + tabela da semana; Semana/Mês = tabela do período. Coluna "Avisos abertos".
  */
 (function () {
   var estado = { modo: 'hoje', data: '' };
 
   TELAS.painel = {
-    titulo: 'Painel',
-    descricao: 'Quem está onde: férias, home office, meio-dia e plantão.',
+    titulo: 'Quem está onde',
+    sobrelinha: '',
     carregar: function (corpo, acoes) {
       acoes.innerHTML =
         '<div class="alternador" role="group" aria-label="Período">' +
@@ -49,28 +46,30 @@
     corpo.innerHTML = '<div class="carregando">Carregando…</div>';
     return api('obterPainel', estado.data, estado.modo).then(function (p) {
       estado.data = p.referencia;
+      atualizarCabecalho({ sobrelinha: p.modo === 'hoje' ? p.referenciaExtenso : '' });
       corpo.innerHTML = '';
-      corpo.appendChild(barra(p, corpo));
 
-      var grade = el('<div class="painel"></div>');
-      var principal = el('<div></div>');
-      if (p.modo === 'hoje') principal.appendChild(cartoesDoDia(p.dias[0]));
-      else principal.appendChild(tabela(p));
+      if (p.modo === 'hoje') corpo.appendChild(cartoesDoDia(p.diaReferencia));
+
+      var grade = el('<div class="com-lateral"></div>');
+      var principal = el('<div class="cartao"></div>');
+      principal.appendChild(barraPeriodo(p, corpo));
+      principal.appendChild(tabela(p));
       grade.appendChild(principal);
       grade.appendChild(colunaAvisos(p));
       corpo.appendChild(grade);
     });
   }
 
-  function barra(p, corpo) {
+  function barraPeriodo(p, corpo) {
     var b = el(
-      '<div class="painel-barra">' +
-        '<div class="navegacao">' +
-          '<button type="button" class="botao secundario pequeno" data-ir="' + esc(p.anterior) + '" aria-label="Período anterior">‹</button>' +
-          '<button type="button" class="botao discreto pequeno" data-ir="' + esc(p.hoje) + '">Hoje</button>' +
-          '<button type="button" class="botao secundario pequeno" data-ir="' + esc(p.proximo) + '" aria-label="Próximo período">›</button>' +
+      '<div class="barra-periodo">' +
+        '<h2>' + esc(p.titulo) + '</h2>' +
+        '<div class="navegacao-periodo" style="margin-left:auto">' +
+          '<button type="button" class="botao neutro pequeno" data-ir="' + esc(p.anterior) + '" aria-label="Período anterior">‹</button>' +
+          '<button type="button" class="botao neutro pequeno" data-ir="' + esc(p.hoje) + '">Hoje</button>' +
+          '<button type="button" class="botao neutro pequeno" data-ir="' + esc(p.proximo) + '" aria-label="Próximo período">›</button>' +
         '</div>' +
-        '<span class="titulo-periodo">' + esc(p.titulo) + '</span>' +
       '</div>');
     b.querySelectorAll('[data-ir]').forEach(function (btn) {
       btn.addEventListener('click', function () { estado.data = btn.dataset.ir; carregarPainel(corpo); });
@@ -78,100 +77,105 @@
     return b;
   }
 
-  function etiquetas(nomes, classeVazio) {
-    if (!nomes.length) return '<span class="' + (classeVazio || 'vazio') + '">ninguém</span>';
-    return '<div class="nomes etiquetas">' + nomes.map(function (n) { return '<span class="etiqueta">' + esc(n) + '</span>'; }).join('') + '</div>';
+  function etiquetas(nomes) {
+    if (!nomes.length) return '<span class="vazio">ninguém</span>';
+    return '<div class="etiquetas">' + nomes.map(function (n) { return '<span class="etiqueta">' + esc(n) + '</span>'; }).join('') + '</div>';
   }
 
   function cartoesDoDia(dia) {
     var util = dia.diaSemana >= 1 && dia.diaSemana <= 5 && !dia.feriado;
-    function cartao(titulo, horario, nomes, problema, semVagas) {
-      var numero = nomes.length;
-      return '<div class="cartao cartao-dia">' +
-        '<h3>' + esc(titulo) + '</h3>' +
-        (horario ? '<div class="horario">' + esc(horario) + '</div>' : '') +
-        '<div class="numero' + (problema ? ' ambar' : '') + '">' + numero + '</div>' +
-        (semVagas ? '<p class="vazio">não se aplica hoje</p>' : etiquetas(nomes)) +
-        (problema ? '<div class="aviso" style="margin-top:10px">' + esc(problema) + '</div>' : '') +
+    function cartao(titulo, quando, nomes, problema, naoSeAplica) {
+      return '<div class="cartao cartao-dia' + (problema ? ' problema' : '') + '">' +
+        '<div class="topo"><h3>' + esc(titulo) + '</h3><span class="quando">' + esc(quando) + '</span></div>' +
+        (naoSeAplica ? '<p class="vazio">não se aplica hoje</p>' : etiquetas(nomes)) +
+        (problema ? '<span class="etiqueta ambar">' + esc(problema.curto) + '</span>' : '') +
       '</div>';
     }
+    var nomesFerias = dia.ferias.map(function (f) { return f.nome; });
+    var quandoFerias = dia.ferias.length === 1 ? 'até ' + dia.ferias[0].ate : '';
     var html =
-      '<div class="grade grade-4">' +
-        cartao('Férias', '', dia.ferias, '') +
-        cartao('Home office', 'semana inteira', dia.homeOffice, '') +
-        cartao('Meio-dia', 'fica até 12:30, sai 17:30', dia.meioDia, dia.problemas.meioDia, !util) +
-        cartao('Plantão', 'fica até 20h', dia.plantao, dia.problemas.plantao, !util) +
+      '<div class="grade grade-4" style="margin-bottom:18px">' +
+        cartao('Férias', quandoFerias, nomesFerias, null) +
+        cartao('Home office', 'semana toda', dia.homeOffice, null) +
+        cartao('Meio-dia', 'até 12:30', dia.meioDia, dia.problemas.meioDia, !util) +
+        cartao('Plantão', 'até 20h', dia.plantao, dia.problemas.plantao, !util) +
       '</div>';
-
-    if (dia.sabado) {
-      html += '<div class="cartao" style="margin-top:14px"><h3>Sábado</h3>' +
-        (dia.sabado.bloqueado ? '<p class="etiqueta cinza">Bloqueado: ' + esc(dia.bloqueios.map(function (b) { return b.descricao || b.tipo; }).join(', ')) + '</p>' : '') +
-        '<div class="grade grade-2" style="margin-top:8px">' +
-          '<div><strong>8h – 11h</strong>' + etiquetas(dia.sabado.t8) + '</div>' +
-          '<div><strong>9h – 12h</strong>' + etiquetas(dia.sabado.t9) + '</div>' +
-        '</div>' +
-        (dia.problemas.sabado ? '<div class="aviso" style="margin-top:10px">' + esc(dia.problemas.sabado) + '</div>' : '') +
-        (dia.problemas.setores ? '<div class="aviso" style="margin-top:8px">' + esc(dia.problemas.setores) + '</div>' : '') +
-      '</div>';
-    }
-    if (dia.bloqueios.length && !dia.sabado) {
-      html += '<div class="cartao" style="margin-top:14px"><div class="etiquetas">' +
-        dia.bloqueios.map(function (b) { return '<span class="etiqueta cinza">' + esc(rotuloBloqueio(b)) + '</span>'; }).join('') +
-      '</div></div>';
-    }
-    return el('<div>' + html + '</div>');
-  }
-
-  function rotuloBloqueio(b) {
-    var nomes = { FERIADO: 'Feriado', TREINAMENTO: 'Treinamento', SEMANA_PRESENCIAL: 'Semana presencial', FERIAS_COLETIVAS: 'Férias coletivas' };
-    return (nomes[b.tipo] || b.tipo) + (b.descricao ? ': ' + b.descricao : '');
+    return el(html);
   }
 
   function tabela(p) {
-    var temSabado = p.dias.some(function (d) { return d.sabado; });
     var linhas = p.dias.filter(function (d) { return d.diaSemana !== 0; }).map(function (d) {
       var util = d.diaSemana >= 1 && d.diaSemana <= 5 && !d.feriado;
-      var classes = [d.hoje ? 'hoje' : '', d.diaSemana === 6 ? 'fim-de-semana' : '', d.feriado ? 'feriado' : ''].join(' ');
+      var sabado = d.diaSemana === 6;
       function celula(nomes, problema, aplica) {
         if (!aplica) return '<td><span class="vazio">—</span></td>';
-        if (problema) return '<td class="problema">' + (nomes.length ? etiquetas(nomes) : '') + '<div>' + esc(problema.replace(/^[^:]+: /, '')) + '</div></td>';
-        return '<td>' + etiquetas(nomes) + '</td>';
-      }
-      var celulaSabado = '';
-      if (temSabado) {
-        if (!d.sabado) celulaSabado = '<td><span class="vazio">—</span></td>';
-        else {
-          var problemaSab = d.problemas.sabado || d.problemas.setores;
-          var conteudo = d.sabado.bloqueado
-            ? '<span class="etiqueta cinza">Bloqueado</span>'
-            : '<div><strong>8–11</strong> ' + etiquetas(d.sabado.t8) + '</div><div style="margin-top:6px"><strong>9–12</strong> ' + etiquetas(d.sabado.t9) + '</div>';
-          celulaSabado = '<td' + (problemaSab ? ' class="problema"' : '') + '>' + conteudo +
-            (problemaSab ? '<div style="margin-top:6px">' + esc(problemaSab.replace(/^Sábado:? /, '')) + '</div>' : '') + '</td>';
+        if (problema) {
+          var texto = nomes.length ? nomes.join(', ') + ' · ' + problema.curto : problema.curto;
+          return '<td><span class="celula-problema">' + esc(texto) + '</span></td>';
         }
+        return '<td><div class="nomes">' + (nomes.length ? esc(nomes.join(', ')) : '<span class="vazio">—</span>') + '</div></td>';
       }
-      return '<tr class="' + classes + '">' +
-        '<td class="dia">' + esc(d.rotulo) + (d.hoje ? ' <span class="etiqueta" style="font-size:11px">hoje</span>' : '') + '</td>' +
-        celula(d.meioDia, d.problemas.meioDia, util) +
-        celula(d.plantao, d.problemas.plantao, util) +
-        '<td>' + (d.diaSemana === 6 ? '<span class="vazio">—</span>' : etiquetas(d.homeOffice)) + '</td>' +
-        '<td>' + etiquetas(d.ferias) + '</td>' +
-        celulaSabado +
+      var primeira;
+      if (sabado) {
+        if (!d.sabado || d.sabado.bloqueado) {
+          primeira = '<td><span class="etiqueta suave">' + esc(d.bloqueios.map(function (b) { return b.descricao || b.tipo; }).join('; ') || 'Bloqueado') + '</span></td>';
+        } else {
+          var prob = d.problemas.sabado || d.problemas.setores;
+          primeira = prob
+            ? '<td><span class="celula-problema">' + esc(prob.curto) + '</span></td>'
+            : '<td><div class="nomes">' + d.sabado.total + ' pessoa' + (d.sabado.total === 1 ? '' : 's') + '</div></td>';
+        }
+      } else {
+        primeira = celula(d.meioDia, d.problemas.meioDia, util);
+      }
+      var rotuloDia = esc(d.rotulo) + (d.feriado ? ' <span class="etiqueta suave" style="font-size:12px">feriado</span>' : '');
+      return '<tr' + (d.hoje ? ' class="hoje"' : '') + '>' +
+        '<td class="dia">' + rotuloDia + '</td>' +
+        primeira +
+        (sabado ? '<td><span class="vazio">—</span></td>' : celula(d.plantao, d.problemas.plantao, util)) +
+        (sabado ? '<td><span class="vazio">—</span></td>' : celula(d.homeOffice, null, true)) +
+        celula(d.ferias.map(function (f) { return f.nome; }), null, true) +
       '</tr>';
     }).join('');
 
-    return el('<div class="cartao" style="padding:0;overflow:auto"><table class="tabela">' +
-      '<thead><tr><th>Dia</th><th>Meio-dia</th><th>Plantão</th><th>Home office</th><th>Férias</th>' + (temSabado ? '<th>Sábado</th>' : '') + '</tr></thead>' +
+    return el('<div style="overflow:auto"><table class="tabela">' +
+      '<thead><tr><th>Dia</th><th>Meio-dia</th><th>Plantão</th><th>Home office</th><th>Férias</th></tr></thead>' +
       '<tbody>' + linhas + '</tbody></table></div>');
   }
 
   function colunaAvisos(p) {
-    var itens = p.avisos.length
-      ? '<ul class="lista-avisos">' + p.avisos.map(function (a) {
-          return '<li><span class="quando">' + esc(a.rotulo) + '</span><span>' + esc(a.texto) + '</span></li>';
-        }).join('') + '</ul>'
-      : '<p class="vazio">Nenhum aviso neste período.</p>';
-    return el('<aside class="cartao"><h3>Avisos abertos</h3>' + itens +
-      '<p class="vazio" style="margin-top:12px;font-size:13px">Avisos não impedem lançamentos.</p></aside>');
+    var a = el('<aside class="cartao painel-lateral"></aside>');
+    a.innerHTML =
+      '<div class="topo-avisos">' +
+        '<h2>Avisos abertos</h2>' +
+        (p.avisos.length ? '<span class="etiqueta ambar pilula">' + p.avisos.length + '</span>' : '') +
+      '</div>' +
+      (p.avisos.length
+        ? '<div class="lista-avisos">' + p.avisos.map(function (av, i) {
+            return '<div class="aviso" role="button" tabindex="0" data-i="' + i + '"><div><strong>' + esc(av.titulo) + '</strong>' +
+              '<div class="explicacao">' + esc(av.texto) + '</div></div></div>';
+          }).join('') + '</div>'
+        : '<p class="vazio">Nenhum aviso neste período.</p>') +
+      '<p class="nota" style="margin-top:14px">Avisos não impedem lançamentos.</p>';
+
+    var abrir = function (av) { irPara(av.tela, { mes: av.data.substring(0, 7), data: av.data }); };
+    a.querySelectorAll('[data-i]').forEach(function (b) {
+      var av = p.avisos[Number(b.dataset.i)];
+      var ir = function () { abrir(av); };
+      b.addEventListener('click', ir);
+      b.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } });
+    });
+
+    if (p.avisos.length) {
+      var primeiro = p.avisos[0];
+      var d = dataDe(primeiro.data);
+      var rotulo = (primeiro.tela === 'sabados' ? 'Ver sábado ' : 'Ver dia ') +
+        ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+      var rodape = el('<div class="rodape"><button type="button" class="botao escuro largo">' + esc(rotulo) + '</button></div>');
+      rodape.querySelector('button').addEventListener('click', function () { abrir(primeiro); });
+      a.appendChild(rodape);
+    }
+    return a;
   }
 })();
 </script>
