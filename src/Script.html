@@ -113,6 +113,36 @@
     };
   });
 
+  // ---------- Preferências de notificação ----------
+  document.getElementById('botaoPreferencias').addEventListener('click', function () {
+    alternarMenu(false);
+    var m = abrirModal(
+      '<h2>Notificações</h2>' +
+      '<p class="vazio">Escolha o que você quer receber. Seus lançamentos continuam valendo do mesmo jeito.</p>' +
+      '<div class="carregando">Carregando…</div>');
+    api('obterMinhasPreferencias').then(function (p) {
+      m.innerHTML =
+        '<h2>Notificações</h2>' +
+        '<p class="vazio">Escolha o que você quer receber. Seus lançamentos continuam valendo do mesmo jeito.</p>' +
+        '<label class="opcao"><input type="checkbox" id="prefEmails"' + (p.emails ? ' checked' : '') + '>' +
+          '<span class="texto"><strong>Receber e-mails</strong><span>Confirmações, trocas propostas e avisos.</span></span></label>' +
+        '<label class="opcao"><input type="checkbox" id="prefAgenda"' + (p.agenda ? ' checked' : '') + '>' +
+          '<span class="texto"><strong>Convites na Google Agenda</strong><span>Sábados, plantões, meio-dia e home office aparecem na sua agenda.</span></span></label>' +
+        '<div class="acoes"><button type="button" class="botao secundario" id="prefCancelar">Cancelar</button>' +
+        '<button type="button" class="botao" id="prefSalvar">Salvar</button></div>';
+      m.querySelector('#prefCancelar').addEventListener('click', fecharModal);
+      m.querySelector('#prefSalvar').addEventListener('click', function () {
+        var botao = m.querySelector('#prefSalvar');
+        botao.disabled = true;
+        api('salvarMinhasPreferencias', {
+          emails: m.querySelector('#prefEmails').checked,
+          agenda: m.querySelector('#prefAgenda').checked
+        }).then(function () { fecharModal(); toast('Preferências salvas.'); })
+          .catch(function (e) { botao.disabled = false; mostrarErro(e); });
+      });
+    }).catch(function (e) { fecharModal(); mostrarErro(e); });
+  });
+
   // ---------- Contador de avisos no menu (próximas 4 semanas) ----------
   window.atualizarContadorAvisos = function () {
     api('contarAvisosAbertos').then(function (n) {

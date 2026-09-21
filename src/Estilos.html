@@ -85,6 +85,18 @@
   }
   .menu-rodape .nome { color: #fff; font-weight: 600; }
   .menu-rodape .detalhe { color: #9FAAA2; }
+  .botao-rodape {
+    margin-top: 10px; min-height: 40px; width: 100%; padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px; color: var(--menu-texto); font-size: 13.5px; font-weight: 500;
+  }
+  .botao-rodape:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+
+  .opcao { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--borda); cursor: pointer; }
+  .opcao:last-of-type { border-bottom: 0; }
+  .opcao input { width: 22px; height: 22px; margin: 2px 0 0; flex: 0 0 auto; accent-color: var(--verde); }
+  .opcao .texto strong { display: block; }
+  .opcao .texto span { color: var(--texto-suave); font-size: 13.5px; }
 
   .faixa-teste {
     background: var(--ambar-claro); color: var(--ambar);

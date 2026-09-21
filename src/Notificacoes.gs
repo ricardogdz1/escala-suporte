@@ -19,9 +19,23 @@
  * @return {Object} {enviado: boolean, destinatarioReal: string, modoTeste: boolean}
  */
 function enviarEmail_(o) {
-  var para = listaEmails_(o.para);
-  var cc = listaEmails_(o.cc);
+  var prefs = mapaPreferencias_();
+  var recusados = [];
+  var filtrar = function (lista) {
+    return lista.filter(function (e) {
+      if (preferenciasDe_(prefs, e).emails) return true;
+      recusados.push(e);
+      return false;
+    });
+  };
+  var para = filtrar(listaEmails_(o.para));
+  var cc = filtrar(listaEmails_(o.cc));
   var assunto = o.assunto || '(sem assunto)';
+
+  if (recusados.length && !para.length) {
+    registrarNotificacao_('EMAIL', o.origem, recusados.join(', '), '', assunto, 'ignorado: destinatário(s) desligou e-mails');
+    return { enviado: false, destinatarioReal: '', modoTeste: modoTeste() };
+  }
   var corpoTexto = o.corpoTexto || removerHtml_(o.corpoHtml || '');
   var corpoHtml = o.corpoHtml || '<pre>' + escaparHtml_(corpoTexto) + '</pre>';
   var teste = modoTeste();
@@ -137,12 +151,17 @@ function buscarEvento_(idEvento) {
   }
 }
 
-/** Em modo teste, o único convidado possível é EMAIL_TESTE. */
+/**
+ * Convidados que de fato entram no evento: tira quem desligou convites na agenda;
+ * em modo teste, o único convidado possível é EMAIL_TESTE.
+ */
 function convidadosReais_(convidados) {
-  if (!modoTeste()) return convidados;
+  var prefs = mapaPreferencias_();
+  var aceitam = convidados.filter(function (e) { return preferenciasDe_(prefs, e).agenda; });
+  if (!modoTeste()) return aceitam;
   var emailTeste = String(obterConfig('EMAIL_TESTE')).trim();
   if (!emailTeste) throw new Error('Modo teste ligado, mas Config > EMAIL_TESTE está vazio.');
-  return convidados.length ? [emailTeste] : [];
+  return aceitam.length ? [emailTeste] : [];
 }
 
 // ---------- Log ----------

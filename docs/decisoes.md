@@ -28,5 +28,8 @@ Decisão do usuário: o projeto fica vinculado à conta dele. Consequências ace
 ## Modo teste
 O projeto está sendo feito em segredo, como surpresa para o gestor. O modo teste garante que nenhum colega receba e-mail ou convite durante o desenvolvimento.
 
+## Notificação é opcional por pessoa
+Pedido do usuário (21/09/2026): cada colaborador liga/desliga e-mails e convites de agenda para si. Fica na aba `Preferencias` e é aplicado dentro de `Notificacoes.gs`, então nenhum módulo precisa se preocupar com isso.
+
 ## Agenda em sentido único
 O sistema é a fonte da verdade e envia para o Google Agenda. Mudanças feitas direto na agenda não voltam para o sistema (evita conflitos). O ID de cada evento criado é guardado para atualizar ou apagar depois.

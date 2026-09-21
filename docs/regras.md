@@ -38,6 +38,7 @@ GERAL, CONTABILIDADE, EMISSÃO, SEMENTES, ATUALIZAÇÃO, AQILA, CADASTROS (hoje 
   - **Pular:** a pessoa pode marcar "pular minha vez" e vai para o fim da fila.
   - **Férias:** quem está de férias quando chega sua vez fica com a vez guardada até voltar.
   - **Novatos:** entram no fim da fila do setor (pela `Data de entrada na equipe`).
+  - **Ponto de partida:** os home offices importados da planilha antiga (2026) contam como "já usou a vez".
 - Sem limite de semanas por ano.
 - Semanas marcadas pelo gestor como presenciais geram aviso ao reservar.
 - Home office **pode** coincidir com plantão ou sábado (sem aviso).
@@ -58,6 +59,12 @@ GERAL, CONTABILIDADE, EMISSÃO, SEMENTES, ATUALIZAÇÃO, AQILA, CADASTROS (hoje 
 - B recebe e-mail e aceita ou recusa no app.
 - Ao aceitar: escala e agenda são atualizadas e o gestor é notificado.
 - Se a troca criar uma situação com aviso, os dois veem o aviso antes de confirmar.
+
+## Notificações (e-mail e Google Agenda)
+- Cada pessoa controla, no próprio app, se quer **receber e-mails** e se quer **convites na agenda** (dois sinalizadores, padrão Sim).
+- Quem desligou não recebe e não é convidado; o sistema continua funcionando igual (o lançamento existe, só não notifica).
+- Eventos de sábado, meio-dia, plantão e home office: um evento por pessoa, convidando-a, no calendário "Escala Suporte".
+- Sábado: horário do turno (8–11 ou 9–12). Meio-dia: 12:30–14:00 como referência do intervalo deslocado. Plantão: 17:30–20:00. Home office: dia inteiro, segunda a sexta.
 
 ## Como os avisos aparecem
 1. Na hora de salvar: janela com o aviso e os botões "Cancelar" e "Salvar mesmo assim".

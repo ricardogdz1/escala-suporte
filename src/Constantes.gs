@@ -19,12 +19,13 @@ var ABA_AVISOS_IGNORADOS = 'AvisosIgnorados';
 var ABA_LOG_NOTIFICACOES = 'LogNotificacoes';
 var ABA_MAPA_NOMES = 'MapaNomes';
 var ABA_RELATORIO_IMPORTACAO = 'RelatorioImportacao';
+var ABA_PREFERENCIAS = 'Preferencias';
 
 // Abas do sistema, na ordem em que o setup() as cria
 var ABAS_DO_SISTEMA = [
   ABA_CONFIG, ABA_LANCAMENTOS, ABA_BLOQUEIOS, ABA_FILA_HO,
   ABA_SALDO_FERIAS, ABA_TROCAS, ABA_AVISOS_IGNORADOS, ABA_LOG_NOTIFICACOES,
-  ABA_MAPA_NOMES
+  ABA_MAPA_NOMES, ABA_PREFERENCIAS
 ];
 
 // Cabeçalhos de cada aba criada pelo setup(). A ordem define as colunas.
@@ -48,6 +49,8 @@ CABECALHOS[ABA_LOG_NOTIFICACOES] = [
 // Nome como aparece na planilha antiga -> e-mail (ou "IGNORAR" para pular a pessoa)
 CABECALHOS[ABA_MAPA_NOMES] = ['Nome na planilha antiga', 'E-mail', 'Observação'];
 CABECALHOS[ABA_RELATORIO_IMPORTACAO] = ['Seção', 'Item', 'Detalhe'];
+// Cada pessoa liga/desliga suas notificações no app; sem linha = Sim/Sim
+CABECALHOS[ABA_PREFERENCIAS] = ['E-mail', 'Receber e-mails', 'Convites na agenda', 'Atualizado em'];
 
 // Cabeçalhos esperados nas abas de cadastro (só para validar no setup)
 CABECALHOS[ABA_PESSOAS] = [
