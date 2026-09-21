@@ -1,0 +1,11 @@
+# Credenciais do clasp
+.clasprc.json
+.clasp.json
+
+# Dados pessoais
+referencia/*.xlsx
+referencia/*.csv
+*.xlsx
+
+node_modules/
+.DS_Store
