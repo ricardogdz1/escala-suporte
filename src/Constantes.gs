@@ -17,11 +17,14 @@ var ABA_SALDO_FERIAS = 'SaldoFerias';
 var ABA_TROCAS = 'Trocas';
 var ABA_AVISOS_IGNORADOS = 'AvisosIgnorados';
 var ABA_LOG_NOTIFICACOES = 'LogNotificacoes';
+var ABA_MAPA_NOMES = 'MapaNomes';
+var ABA_RELATORIO_IMPORTACAO = 'RelatorioImportacao';
 
 // Abas do sistema, na ordem em que o setup() as cria
 var ABAS_DO_SISTEMA = [
   ABA_CONFIG, ABA_LANCAMENTOS, ABA_BLOQUEIOS, ABA_FILA_HO,
-  ABA_SALDO_FERIAS, ABA_TROCAS, ABA_AVISOS_IGNORADOS, ABA_LOG_NOTIFICACOES
+  ABA_SALDO_FERIAS, ABA_TROCAS, ABA_AVISOS_IGNORADOS, ABA_LOG_NOTIFICACOES,
+  ABA_MAPA_NOMES
 ];
 
 // Cabeçalhos de cada aba criada pelo setup(). A ordem define as colunas.
@@ -42,6 +45,9 @@ CABECALHOS[ABA_AVISOS_IGNORADOS] = ['Quando', 'E-mail', 'Lançamento', 'Código 
 CABECALHOS[ABA_LOG_NOTIFICACOES] = [
   'Quando', 'Tipo', 'Origem', 'Destinatários originais', 'Destinatário real', 'Assunto/título', 'Resultado'
 ];
+// Nome como aparece na planilha antiga -> e-mail (ou "IGNORAR" para pular a pessoa)
+CABECALHOS[ABA_MAPA_NOMES] = ['Nome na planilha antiga', 'E-mail', 'Observação'];
+CABECALHOS[ABA_RELATORIO_IMPORTACAO] = ['Seção', 'Item', 'Detalhe'];
 
 // Cabeçalhos esperados nas abas de cadastro (só para validar no setup)
 CABECALHOS[ABA_PESSOAS] = [
@@ -103,5 +109,9 @@ var CONFIG_PADRAO = [
   ['VAGAS_PLANTAO', 1, 'Pessoas por dia no plantão; diferente disso gera aviso'],
   ['VAGAS_HOME_OFFICE', 1, 'Pessoas da equipe em home office por semana'],
   ['ANTECEDENCIA_FERIAS_DIAS', 35, 'Aviso se as férias forem pedidas com menos dias de antecedência que isso'],
-  ['FERIAS_AVISO_PRAZO_DIAS', 60, 'Aviso quando o prazo limite para gozo estiver a menos dias que isso']
+  ['FERIAS_AVISO_PRAZO_DIAS', 60, 'Aviso quando o prazo limite para gozo estiver a menos dias que isso'],
+  // Importação da planilha antiga (só usada uma vez)
+  ['ID_PLANILHA_ANTIGA', '', 'ID da planilha antiga convertida para Planilha Google (o trecho entre /d/ e /edit na URL)'],
+  ['DATA_INICIO_IMPORTACAO', '2026-01-01', 'Só importa lançamentos a partir desta data'],
+  ['SEMANA_MEIO_DIA_IMPORTACAO', '', 'Segunda-feira da semana em que a grade "Plantão Meio dia" vale (vazio = semana atual)']
 ];
