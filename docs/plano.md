@@ -10,13 +10,14 @@ Status: ⬜ não iniciado · 🟨 em andamento · ✅ concluído
 - [x] Projeto Apps Script "Escala Suporte" vinculado à planilha e ligado a `src/` com clasp
 - [x] Repositório git iniciado
 
-## Fase 1 – Fundação ⬜
-- Abas Config, Lancamentos, Bloqueios e demais de `docs/modelo-dados.md`
-- Web app com login e identificação do usuário pelo e-mail (perfil vindo de `Pessoas`)
-- Função central de envio de e-mail/evento respeitando o modo teste
-- Estrutura das telas e menu lateral
-- Painel "quem está onde"
-- Importação dos dados atuais da planilha antiga (ver `referencia/LEIA-ME.md`)
+## Fase 1 – Fundação ✅ (21/09/2026)
+- [x] Abas Config, Lancamentos, Bloqueios e demais de `docs/modelo-dados.md` (`Setup.gs`, idempotente, menu na planilha)
+- [x] Web app com login e identificação do usuário pelo e-mail (`Usuario.gs`, `Web.gs`, tela SemAcesso)
+- [x] Função central de envio de e-mail/evento respeitando o modo teste (`Notificacoes.gs` + aba LogNotificacoes)
+- [x] Estrutura das telas e menu lateral (`Index.html`, `Estilos.html`, `Script.html`)
+- [x] Painel "quem está onde" com Hoje/Semana/Mês e avisos de cobertura (`Painel.gs`, `TelaPainel.html`)
+- [x] Importação da planilha antiga a partir de 01/01/2026 (`Importacao.gs`, abas MapaNomes e RelatorioImportacao)
+- Implantação de teste: `/dev` (ID AKfycbwpbaraP0mGgUvwlkX-QVvGVny53IWoGJ9wiQGobQ)
 
 ## Fase 2 – Sábados e Home office ⬜
 - Sábados com turnos, contagem, cobertura por setor e avisos
