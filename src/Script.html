@@ -1,0 +1,118 @@
+<script>
+/**
+ * Base do cliente: navegação, chamadas ao servidor, avisos e modais.
+ * Cada tela registra-se em TELAS com {titulo, descricao, carregar(container)}.
+ */
+(function () {
+  var TELAS = window.TELAS = {};
+  var telaAtual = null;
+  var conteudo = document.getElementById('conteudo');
+
+  // ---------- Chamada ao servidor ----------
+  window.api = function (funcao) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (resolver, rejeitar) {
+      var chamada = google.script.run
+        .withSuccessHandler(resolver)
+        .withFailureHandler(function (erro) { rejeitar(erro); });
+      chamada[funcao].apply(chamada, args);
+    });
+  };
+
+  // ---------- Utilitários de HTML ----------
+  window.esc = function (texto) {
+    return String(texto == null ? '' : texto).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+  window.el = function (html) {
+    var t = document.createElement('template');
+    t.innerHTML = html.trim();
+    return t.content.firstElementChild;
+  };
+
+  // ---------- Mensagens ----------
+  window.toast = function (mensagem, erro) {
+    var t = el('<div class="toast' + (erro ? ' erro' : '') + '" role="status"></div>');
+    t.textContent = mensagem;
+    document.getElementById('toasts').appendChild(t);
+    setTimeout(function () { t.remove(); }, erro ? 7000 : 3500);
+  };
+  window.mostrarErro = function (erro) {
+    var msg = erro && erro.message ? erro.message : String(erro);
+    toast(msg.replace(/^Error:\s*/, ''), true);
+    console.error(erro);
+  };
+
+  // ---------- Modal ----------
+  var raizModal = document.getElementById('modal');
+  window.abrirModal = function (html) {
+    var fundo = el('<div class="modal-fundo"><div class="modal" role="dialog" aria-modal="true"></div></div>');
+    fundo.firstElementChild.innerHTML = html;
+    raizModal.appendChild(fundo);
+    fundo.addEventListener('click', function (e) { if (e.target === fundo) fecharModal(); });
+    var foco = fundo.querySelector('button, input, select, textarea');
+    if (foco) foco.focus();
+    return fundo.firstElementChild;
+  };
+  window.fecharModal = function () { raizModal.innerHTML = ''; };
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fecharModal(); });
+
+  // ---------- Navegação ----------
+  var menu = document.getElementById('menu');
+  var cortina = document.getElementById('cortina');
+  var botaoMenu = document.getElementById('botaoMenu');
+
+  function alternarMenu(abrir) {
+    menu.classList.toggle('aberto', abrir);
+    cortina.classList.toggle('oculto', !abrir);
+    botaoMenu.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+  }
+  botaoMenu.addEventListener('click', function () { alternarMenu(!menu.classList.contains('aberto')); });
+  cortina.addEventListener('click', function () { alternarMenu(false); });
+
+  window.irPara = function (nome) {
+    var tela = TELAS[nome];
+    if (!tela) { nome = 'painel'; tela = TELAS[nome]; }
+    telaAtual = nome;
+    alternarMenu(false);
+
+    document.querySelectorAll('.menu-item').forEach(function (b) {
+      if (b.dataset.tela === nome) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+
+    conteudo.innerHTML =
+      '<div class="cabecalho-tela"><div><h1>' + esc(tela.titulo) + '</h1>' +
+      (tela.descricao ? '<p class="descricao">' + esc(tela.descricao) + '</p>' : '') +
+      '</div><div id="acoesTela"></div></div>' +
+      '<div id="corpoTela"><div class="carregando">Carregando…</div></div>';
+    window.scrollTo(0, 0);
+
+    Promise.resolve()
+      .then(function () { return tela.carregar(document.getElementById('corpoTela'), document.getElementById('acoesTela')); })
+      .catch(function (erro) {
+        document.getElementById('corpoTela').innerHTML = '';
+        mostrarErro(erro);
+      });
+  };
+  window.recarregarTela = function () { if (telaAtual) irPara(telaAtual); };
+
+  document.querySelectorAll('.menu-item').forEach(function (b) {
+    b.addEventListener('click', function () { irPara(b.dataset.tela); });
+  });
+
+  // ---------- Telas ainda não construídas ----------
+  ['sabados', 'meiodia', 'homeoffice', 'ferias'].forEach(function (nome) {
+    var titulos = { sabados: 'Sábados', meiodia: 'Meio-dia e plantão', homeoffice: 'Home office', ferias: 'Férias' };
+    TELAS[nome] = {
+      titulo: titulos[nome],
+      carregar: function (corpo) {
+        corpo.innerHTML = '<div class="cartao"><p class="vazio">Esta tela ainda está em construção.</p></div>';
+      }
+    };
+  });
+
+  window.addEventListener('DOMContentLoaded', function () { irPara(window.TELA_INICIAL); });
+})();
+</script>

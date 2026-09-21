@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Escala Suporte</title>
+  <?!= incluir('Estilos') ?>
+</head>
+<body>
+  <div class="app">
+    <header class="barra-movel">
+      <button class="botao-menu" id="botaoMenu" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu">☰</button>
+      <span class="marca">Escala Suporte</span>
+    </header>
+
+    <aside class="menu" id="menu">
+      <div class="menu-topo">
+        <div class="marca">Escala Suporte</div>
+        <div class="sub">Equipe de suporte Agro1</div>
+      </div>
+      <nav aria-label="Telas">
+        <button class="menu-item" data-tela="painel">Painel <span class="contador oculto" id="contadorAvisos">0</span></button>
+        <button class="menu-item" data-tela="sabados">Sábados</button>
+        <button class="menu-item" data-tela="meiodia">Meio-dia e plantão</button>
+        <button class="menu-item" data-tela="homeoffice">Home office</button>
+        <button class="menu-item" data-tela="ferias">Férias</button>
+      </nav>
+      <div class="menu-rodape">
+        <div class="nome"><?= usuario.nomeExibicao ?></div>
+        <div class="detalhe"><?= usuario.setor ?> · <?= usuario.perfil ?></div>
+      </div>
+    </aside>
+    <div class="cortina oculto" id="cortina"></div>
+
+    <main class="principal">
+      <? if (usuario.modoTeste) { ?>
+        <div class="faixa-teste">Modo teste ligado: e-mails e convites vão só para o e-mail de teste. Nenhum colega é notificado.</div>
+      <? } ?>
+      <div class="conteudo" id="conteudo" aria-live="polite">
+        <div class="carregando">Carregando…</div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toasts"></div>
+  <div id="modal"></div>
+
+  <script>
+    window.USUARIO = <?!= JSON.stringify(usuario) ?>;
+    window.TELA_INICIAL = <?!= JSON.stringify(telaInicial) ?>;
+  </script>
+  <?!= incluir('Script') ?>
+  <?!= incluir('TelaPainel') ?>
+</body>
+</html>

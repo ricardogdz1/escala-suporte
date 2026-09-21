@@ -1,0 +1,26 @@
+<script>
+/**
+ * Tela Painel – "quem está onde". Versão inicial: só confirma a identificação.
+ * O painel completo (Hoje/Semana/Mês, cartões e avisos) entra no próximo passo.
+ */
+TELAS.painel = {
+  titulo: 'Painel',
+  descricao: 'Quem está onde hoje, na semana e no mês.',
+  carregar: function (corpo) {
+    var u = window.USUARIO;
+    corpo.innerHTML =
+      '<div class="cartao">' +
+        '<h2>Você está identificado</h2>' +
+        '<p><strong>' + esc(u.nome) + '</strong> (' + esc(u.nomeExibicao) + ')</p>' +
+        '<p>' + esc(u.email) + '</p>' +
+        '<div class="etiquetas">' +
+          '<span class="etiqueta">' + esc(u.setor) + '</span>' +
+          u.setoresExtras.map(function (s) { return '<span class="etiqueta cinza">' + esc(s) + '</span>'; }).join('') +
+          '<span class="etiqueta ' + (u.gestor ? 'ambar' : 'cinza') + '">' + esc(u.perfil) + '</span>' +
+        '</div>' +
+        '<p style="margin-top:12px" class="vazio">Na equipe desde ' + esc(u.dataEntrada || '—') + '.</p>' +
+      '</div>' +
+      '<div class="cartao"><p class="vazio">O painel "quem está onde" será montado no próximo passo.</p></div>';
+  }
+};
+</script>
