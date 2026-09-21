@@ -1,6 +1,6 @@
 # Modelo de dados (planilha-banco)
 
-Proposta inicial. Validar e ajustar na Fase 1.
+Implementado em `src/Constantes.gs` (cabeçalhos) e `src/Setup.gs` (cria as abas). Se mudar aqui, mude lá.
 
 ## Abas de cadastro (já existem em `referencia/Cadastro_Pessoas_Setores.xlsx`)
 - **Pessoas:** E-mail corporativo | Nome completo | Nome de exibição | Setor principal | Perfil (Colaborador/Gestor) | Ativo (Sim/Não) | Data de entrada na equipe | Qtd. setores extras (fórmula)
@@ -8,8 +8,8 @@ Proposta inicial. Validar e ajustar na Fase 1.
 - **Setores extras:** E-mail corporativo | Nome (fórmula) | Setor extra | Observação
 
 ## Abas novas
-- **Config:** Chave | Valor. Ex.: Modo teste, E-mail de teste, ID calendário teste, ID calendário produção, Sábado mínimo (6), Sábado máximo (8), Vagas meio-dia (2), Vagas plantão (1), Antecedência férias (35).
-- **Lancamentos:** ID | Tipo (SABADO, MEIO_DIA, PLANTAO, HOME_OFFICE, FERIAS) | E-mail | Data início | Data fim | Turno (8-11 / 9-12, só sábado) | Status (ativo, cancelado; férias: rascunho, solicitada, aprovada, encaminhada) | Criado por | Criado em | Atualizado em | ID evento agenda
+- **Config:** Chave | Valor | Descrição. Chaves: `MODO_TESTE` (Sim/Não), `EMAIL_TESTE`, `ID_CALENDARIO_TESTE`, `ID_CALENDARIO_PRODUCAO`, `DOMINIO`, `SABADO_MIN` (6), `SABADO_MAX` (8), `VAGAS_MEIO_DIA` (2), `VAGAS_PLANTAO` (1), `VAGAS_HOME_OFFICE` (1), `ANTECEDENCIA_FERIAS_DIAS` (35), `FERIAS_AVISO_PRAZO_DIAS` (60). Lidas por `obterConfig()` com cache de 5 min.
+- **Lancamentos:** ID | Tipo (SABADO, MEIO_DIA, PLANTAO, HOME_OFFICE, FERIAS) | E-mail | Data início | Data fim | Turno (8-11 / 9-12, só sábado) | Status (ativo, cancelado; férias: rascunho, solicitada, aprovada, encaminhada) | Criado por | Criado em | Atualizado em | ID evento agenda | Observação
 - **Bloqueios:** ID | Tipo (FERIADO, TREINAMENTO, SEMANA_PRESENCIAL, FERIAS_COLETIVAS) | Data início | Data fim | Descrição
 - **FilaHO:** E-mail | Setor | Tipo (USOU, PULOU) | Semana | Registrado em — histórico usado para calcular a fila.
 - **SaldoFerias:** E-mail | Saldo inicial | Prazo limite para gozo | Período aquisitivo
