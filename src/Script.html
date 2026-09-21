@@ -113,6 +113,18 @@
     };
   });
 
-  window.addEventListener('DOMContentLoaded', function () { irPara(window.TELA_INICIAL); });
+  // ---------- Contador de avisos no menu (próximas 4 semanas) ----------
+  window.atualizarContadorAvisos = function () {
+    api('contarAvisosAbertos').then(function (n) {
+      var c = document.getElementById('contadorAvisos');
+      c.textContent = n;
+      c.classList.toggle('oculto', !n);
+    }).catch(function () { /* contador é só informativo */ });
+  };
+
+  window.addEventListener('DOMContentLoaded', function () {
+    irPara(window.TELA_INICIAL);
+    atualizarContadorAvisos();
+  });
 })();
 </script>
