@@ -67,7 +67,7 @@ function lerAbaDaPlanilha_(nome) {
 /** Anexa uma linha na aba a partir de um objeto {cabeçalho: valor}. Retorna o número da linha. */
 function anexarLinha_(nome, obj) {
   var aba = aba_(nome);
-  var cabecalho = cabecalhoDaAba_(aba);
+  var cabecalho = cabecalhoParaGravar_(aba, nome);
   var linha = cabecalho.map(function (c) { return obj[c] !== undefined ? obj[c] : ''; });
   aba.appendRow(linha);
   esquecerAba_(nome);
@@ -77,12 +77,32 @@ function anexarLinha_(nome, obj) {
 /** Atualiza colunas de uma linha existente. Só mexe nas chaves presentes em obj. */
 function atualizarLinha_(nome, numeroLinha, obj) {
   var aba = aba_(nome);
-  var cabecalho = cabecalhoDaAba_(aba);
+  var cabecalho = cabecalhoParaGravar_(aba, nome);
   Object.keys(obj).forEach(function (chave) {
     var col = cabecalho.indexOf(chave);
     if (col >= 0) aba.getRange(numeroLinha, col + 1).setValue(obj[chave]);
   });
   esquecerAba_(nome);
+}
+
+/**
+ * Cabeçalho para gravar numa aba do sistema, criando as colunas que faltarem.
+ * Sem isso, uma coluna nova no código (e ainda não criada na planilha) faz a gravação
+ * ser perdida em silêncio: atualizarLinha_ ignora chaves fora do cabeçalho e a leitura
+ * volta ao padrão. Só mexe nas abas do sistema; as de cadastro são do gestor.
+ */
+function cabecalhoParaGravar_(aba, nome) {
+  var cabecalho = cabecalhoDaAba_(aba);
+  var esperado = CABECALHOS[nome];
+  if (!esperado || ABAS_DO_SISTEMA.indexOf(nome) < 0) return cabecalho;
+
+  var faltando = esperado.filter(function (c) { return cabecalho.indexOf(c) < 0; });
+  if (!faltando.length) return cabecalho;
+
+  aba.getRange(1, cabecalho.length + 1, 1, faltando.length).setValues([faltando]);
+  aba.getRange(1, 1, 1, cabecalho.length + faltando.length).setFontWeight('bold').setBackground('#E8EFE9');
+  Logger.log('Colunas criadas em "' + nome + '": ' + faltando.join(', '));
+  return cabecalho.concat(faltando);
 }
 
 function cabecalhoDaAba_(aba) {

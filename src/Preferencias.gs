@@ -78,7 +78,16 @@ function salvarMinhasPreferencias(prefs) {
   GRUPOS_AVISO.forEach(function (g) { avisos[g] = !!(prefs.avisos && prefs.avisos[g]); });
   var p = { emails: !!prefs.emails, agenda: !!prefs.agenda, avisos: avisos };
   gravarPreferencias_(u.email, p, mapaPreferencias_());
-  return p;
+
+  // relê da planilha: se algo não foi gravado (coluna faltando, aba protegida), o usuário
+  // precisa saber em vez de ver a tela voltar ao que era
+  var salvo = preferenciasDe_(mapaPreferencias_(), u.email);
+  var divergente = (salvo.emails !== p.emails || salvo.agenda !== p.agenda) ||
+    GRUPOS_AVISO.some(function (g) { return salvo.avisos[g] !== p.avisos[g]; });
+  if (divergente) {
+    throw new Error('Não foi possível salvar as configurações na planilha. Rode setup() no editor do Apps Script e tente de novo.');
+  }
+  return { emails: salvo.emails, agenda: salvo.agenda, avisos: salvo.avisos };
 }
 
 /**
