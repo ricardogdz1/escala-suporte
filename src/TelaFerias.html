@@ -55,6 +55,19 @@
   .form-ferias .avisos-previa { margin-top: 10px; }
   .form-ferias .avisos-previa .aviso { font-size: 14px; padding: 9px 12px; }
   .form-ferias textarea { display: block; width: 100%; box-sizing: border-box; min-height: 60px; margin-top: 6px; padding: 8px 12px; border: 1.5px solid var(--borda); border-radius: 9px; font: inherit; font-weight: 400; background: #fff; resize: vertical; }
+  .recolhivel { padding: 0; }
+  .cabecalho-recolhivel {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 16px 20px;
+    background: none; border: 0; text-align: left; font: inherit; color: inherit; border-radius: var(--raio);
+  }
+  .cabecalho-recolhivel:hover { background: #FAFAF6; }
+  .cabecalho-recolhivel .texto { flex: 1 1 auto; min-width: 0; }
+  .cabecalho-recolhivel h3 { margin: 0; }
+  .cabecalho-recolhivel .nota { display: block; font-size: 13.5px; }
+  .cabecalho-recolhivel .seta { flex: 0 0 auto; font-size: 14px; transition: transform 0.15s; }
+  .recolhivel.aberto .cabecalho-recolhivel .seta { transform: rotate(180deg); }
+  .corpo-recolhivel { display: none; padding: 0 20px 18px; }
+  .recolhivel.aberto .corpo-recolhivel { display: block; }
   .pendencias .periodo { background: var(--ambar-claro); border-color: var(--ambar-borda); }
   .pendencias .periodo.aprovada { background: var(--azul-claro); border-color: transparent; }
 </style>
@@ -190,8 +203,26 @@
 
   // ---------- Pendências (gestor) ----------
 
+  /** Fica fechado por padrão: o gestor abre quando quiser decidir (pedido do usuário, 22/09/2026). */
   function cartaoPendencias(d, ctx) {
-    var c = el('<div class="cartao pendencias" style="margin-bottom:14px"><h3>Pendências de aprovação</h3><div class="periodos-lista"></div></div>');
+    var n = d.pendencias.length;
+    var aguardando = d.pendencias.filter(function (p) { return p.status === 'solicitada'; }).length;
+    var resumo = aguardando
+      ? aguardando + (aguardando > 1 ? ' aguardando sua aprovação' : ' aguardando sua aprovação')
+      : 'nenhuma aguardando aprovação';
+    var c = el('<div class="cartao pendencias recolhivel" style="margin-bottom:14px">' +
+      '<button type="button" class="cabecalho-recolhivel" aria-expanded="false">' +
+        '<span class="texto"><h3>Pendências de aprovação</h3>' +
+        '<span class="nota">' + esc(n + (n > 1 ? ' períodos · ' : ' período · ') + resumo) + '</span></span>' +
+        '<span class="etiqueta ' + (aguardando ? 'ambar' : 'suave') + ' pilula">' + n + '</span>' +
+        '<span class="seta" aria-hidden="true">▾</span>' +
+      '</button>' +
+      '<div class="corpo-recolhivel"><div class="periodos-lista"></div></div></div>');
+    var botao = c.querySelector('.cabecalho-recolhivel');
+    botao.addEventListener('click', function () {
+      var aberto = c.classList.toggle('aberto');
+      botao.setAttribute('aria-expanded', String(aberto));
+    });
     var lista = c.querySelector('.periodos-lista');
     d.pendencias.forEach(function (p) {
       var item = linhaPeriodo(p, ctx, true);
