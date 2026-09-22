@@ -41,7 +41,6 @@
   .aviso-dia li::before { content: "·"; position: absolute; left: -12px; font-weight: 700; }
   .painel-lateral .lista-avisos .aviso { cursor: pointer; }
   .painel-lateral .lista-avisos .aviso:hover { background: #F7E4C3; }
-  .painel-lateral .rodape { padding-top: 18px; }
   .painel-lateral.cartao { display: flex; flex-direction: column; align-self: start; } /* altura = conteúdo, não a da coluna ao lado */
   .barra-periodo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .barra-periodo h2 { font-size: 22px; }
@@ -330,15 +329,6 @@
     GRUPOS_AVISOS.forEach(function (g) {
       grupos.appendChild(cartaoGrupo(g, porGrupo[g.chave], abrir));
     });
-    if (p.avisos.length) {
-      var primeiro = p.avisos[0];
-      var d = dataDe(primeiro.data);
-      var rotulo = (primeiro.tela === 'sabados' ? 'Ver sábado ' : 'Ver dia ') +
-        ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
-      var rodape = el('<div class="rodape"><button type="button" class="botao escuro largo">' + esc(rotulo) + '</button></div>');
-      rodape.querySelector('button').addEventListener('click', function () { abrir(primeiro); });
-      a.appendChild(rodape);
-    }
     return a;
   }
 })();
