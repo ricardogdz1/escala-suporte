@@ -366,8 +366,9 @@
         '<div class="lado"></div></div>');
       var cont = l.querySelector('.etiquetas');
       if (!dia.aplica) {
-        cont.textContent = dia.feriado ? 'Feriado' + (dia.bloqueios.length ? ' · ' + dia.bloqueios.join('; ') : '') : 'Não se aplica';
+        cont.textContent = dia.feriado ? dia.bloqueios.join('; ') || 'Feriado' : 'Não se aplica';
         dia.pessoas.forEach(function (p) { cont.appendChild(etiquetaPessoa(p, dia, ctx)); });
+        if (ctx.d.souGestor && podeMarcarFeriado(dia)) l.querySelector('.lado').appendChild(botaoFeriado(dia, ctx));
         return l;
       }
       dia.pessoas.forEach(function (p) { cont.appendChild(etiquetaPessoa(p, dia, ctx)); });
@@ -378,7 +379,49 @@
       var lado = l.querySelector('.lado');
       if (dia.bloqueios.length) lado.appendChild(el('<span class="etiqueta suave" title="' + esc(dia.bloqueios.join('; ')) + '">' + esc(dia.bloqueios[0]) + '</span>'));
       if (dia.problema) lado.appendChild(el('<span class="etiqueta ambar pilula">' + esc(dia.problema) + '</span>'));
+      if (ctx.d.souGestor && podeMarcarFeriado(dia)) lado.appendChild(botaoFeriado(dia, ctx));
       return l;
+    }
+
+    /** Feriado de vários dias (importação) só é ajustado na planilha. */
+    function podeMarcarFeriado(dia) { return !dia.feriadoVariosDias; }
+
+    function botaoFeriado(dia, ctx) {
+      var b = el('<button type="button" class="botao discreto pequeno">' +
+        (dia.feriadoTipo ? 'Editar feriado' : 'Marcar feriado') + '</button>');
+      b.addEventListener('click', function () { janelaFeriado(dia, ctx); });
+      return b;
+    }
+
+    /** Gestor: marca o dia como feriado obrigatório, facultativo ou tira o feriado. */
+    function janelaFeriado(dia, ctx) {
+      var tipo = dia.feriadoTipo;
+      var m = abrirModal(
+        '<h2>Feriado</h2>' +
+        '<p class="nota">' + esc(dia.rotulo) + '</p>' +
+        '<label class="opcao"><input type="radio" name="tipoFeriado" value="FERIADO"' + (tipo === 'FERIADO' ? ' checked' : '') + '>' +
+          '<span class="texto"><strong>Feriado</strong><span>Ninguém trabalha. O dia não cobra meio-dia nem plantão.</span></span></label>' +
+        '<label class="opcao"><input type="radio" name="tipoFeriado" value="FERIADO_FACULTATIVO"' + (tipo === 'FERIADO_FACULTATIVO' ? ' checked' : '') + '>' +
+          '<span class="texto"><strong>Feriado facultativo</strong><span>A equipe pode trabalhar, mas o sistema também não cobra escala.</span></span></label>' +
+        '<label class="opcao"><input type="radio" name="tipoFeriado" value=""' + (tipo ? '' : ' checked') + '>' +
+          '<span class="texto"><strong>Não é feriado</strong><span>Dia comum: volta a cobrar as vagas.</span></span></label>' +
+        '<label class="campo">Nome do feriado (opcional)<input type="text" id="ferDescricao" maxlength="200" value="' + esc(dia.feriadoDescricao) + '" placeholder="Ex.: Corpus Christi"></label>' +
+        '<div class="acoes"><button type="button" class="botao neutro" data-acao="cancelar">Cancelar</button>' +
+        '<button type="button" class="botao escuro" data-acao="salvar">Salvar</button></div>');
+
+      m.querySelector('[data-acao="cancelar"]').addEventListener('click', fecharModal);
+      m.querySelector('[data-acao="salvar"]').addEventListener('click', function () {
+        var escolhido = m.querySelector('input[name="tipoFeriado"]:checked').value;
+        m.querySelector('[data-acao="salvar"]').disabled = true;
+        api('definirFeriado', { data: dia.data, tipo: escolhido, descricao: m.querySelector('#ferDescricao').value })
+          .then(function () {
+            fecharModal();
+            toast(escolhido ? 'Feriado salvo.' : 'Feriado removido.');
+            limparRespostasGuardadas();
+            carregar(ctx.corpo, ctx.acoes);
+          })
+          .catch(function (e) { fecharModal(); mostrarErro(e); });
+      });
     }
 
     function cartaoSemana(sem, ctx) {

@@ -272,7 +272,7 @@ function avisosFerias_(email, inicio, fim, idIgnorar, c, u) {
     if (!todos.some(function (d) { return d >= 14; })) avisos.push(aviso_('FERIAS_CLT_14', 'Nenhum período com 14 dias', 'Um dos períodos precisa ter pelo menos 14 dias corridos.'));
     if (dias < 5) avisos.push(aviso_('FERIAS_CLT_5', 'Período com menos de 5 dias', 'Os períodos precisam ter pelo menos 5 dias corridos.'));
     var doisDepois = adicionarDias_(inicio, 2);
-    var feriadoPerto = c.bloqueios.some(function (b) { return b.tipo === BLOQUEIO.FERIADO && b.inicio.getTime() <= doisDepois.getTime() && b.fim.getTime() >= inicio.getTime(); });
+    var feriadoPerto = c.bloqueios.some(function (b) { return ehTipoFeriado_(b) && b.inicio.getTime() <= doisDepois.getTime() && b.fim.getTime() >= inicio.getTime(); });
     if (feriadoPerto || inicio.getDay() === 5 || inicio.getDay() === 6 || inicio.getDay() === 0) {
       avisos.push(aviso_('FERIAS_CLT_INICIO', 'Início perto de folga ou feriado', 'As férias não podem começar nos 2 dias que antecedem feriado ou folga (' + rotulo + ').'));
     }

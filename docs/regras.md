@@ -33,7 +33,8 @@ GERAL, CONTABILIDADE, EMISSÃO, SEMENTES, ATUALIZAÇÃO, AQILA, CADASTROS (hoje 
 - Tela própria ("Meio-dia"): um cartão por semana, semana atual + 8; "Semanas anteriores"/"Próximas semanas" carregam mais. Seleção em lote e painel "Mudanças", como nos sábados.
 
 ## Plantão
-- **Segunda a sexta: 18h às 20h.** **Sábado: 13h às 17h.** Nunca em feriado cadastrado. Sábado com TREINAMENTO da equipe gera aviso.
+- **Segunda a sexta: 18h às 20h.** **Sábado: 13h às 17h.** Nunca em feriado cadastrado.
+- **Feriados (só o gestor):** no dia da grade de Meio-dia ou Plantão, marca **Feriado** ou **Feriado facultativo** (usado quando a empresa trabalha no ponto facultativo). Os dois deixam o dia sem cobrança de vagas; muda só a etiqueta. "Não é feriado" remove. Sábado com TREINAMENTO da equipe gera aviso.
 - Voluntário. **1 pessoa por dia** (`VAGAS_PLANTAO` em dia útil, `VAGAS_PLANTAO_SABADO` no sábado); diferente disso gera aviso.
 - O lançamento guarda o turno (`18h-20h` ou `13h-17h`).
 - Relatório: quantidade de plantões por pessoa no mês (cartão lateral) e os seus.

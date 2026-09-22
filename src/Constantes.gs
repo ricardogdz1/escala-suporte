@@ -89,6 +89,8 @@ var STATUS = {
 // Tipos de bloqueio
 var BLOQUEIO = {
   FERIADO: 'FERIADO',
+  // facultativo: a equipe pode trabalhar, mas o sistema não cobra escala (decisão do usuário, 22/09/2026)
+  FERIADO_FACULTATIVO: 'FERIADO_FACULTATIVO',
   TREINAMENTO: 'TREINAMENTO',
   SEMANA_PRESENCIAL: 'SEMANA_PRESENCIAL',
   FERIAS_COLETIVAS: 'FERIAS_COLETIVAS'

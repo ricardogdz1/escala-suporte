@@ -60,7 +60,7 @@ function escaladosNoSabado_(lancamentos, data) {
 
 function sabadoBloqueado_(c, data) {
   return bloqueiosDoDia_(c.bloqueios, data).filter(function (b) {
-    return b.tipo === BLOQUEIO.TREINAMENTO || b.tipo === BLOQUEIO.FERIADO;
+    return b.tipo === BLOQUEIO.TREINAMENTO || ehTipoFeriado_(b);
   });
 }
 
@@ -118,7 +118,7 @@ function montarSabado_(data, c, u) {
       descricao: tituloBloqueio_(treinoEquipe),
       variosDias: !mesmoDia_(treinoEquipe.inicio, treinoEquipe.fim)
     } : null,
-    feriado: bloqueios.filter(function (b) { return b.tipo === BLOQUEIO.FERIADO; }).map(tituloBloqueio_)[0] || ''
+    feriado: bloqueios.filter(ehTipoFeriado_).map(tituloBloqueio_)[0] || ''
   };
 }
 

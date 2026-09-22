@@ -38,7 +38,7 @@ Status: ⬜ não iniciado · 🟨 em andamento · ✅ concluído
 ## Fase 7 – Gestor 🟨 (22/09/2026)
 Decisões: sem tela nova (ações nas telas e em Configurações); feriado facultativo não cobra escala, muda só a etiqueta; sem "ver como colaborador".
 - [x] Sábado de treinamento da equipe pelo cartão (`Bloqueios.gs`, `TelaSabados.html`)
-- [ ] Feriados obrigatório/facultativo na grade de Meio-dia e Plantão
+- [x] Feriados obrigatório/facultativo na grade de Meio-dia e Plantão (`Bloqueios.gs`, `TelaSemanal.html`)
 - [ ] Regras (mín/máx do sábado e vagas) numa janela de Configurações
 - [ ] Pessoas: adicionar e inativar numa janela de Configurações
 - Já existia: escalar/tirar qualquer pessoa nas quatro telas e todo o fluxo de status das férias

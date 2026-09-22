@@ -123,7 +123,7 @@ function escaladosNoDia_(lancamentos, tipo, data) {
 /** Um dia da semana (null se o tipo não se aplica nesse dia da semana, ex.: sábado no meio-dia). */
 function montarDiaSemanal_(data, r, c, u) {
   var bloqueios = bloqueiosDoDia_(c.bloqueios, data);
-  var feriado = bloqueios.some(function (b) { return b.tipo === BLOQUEIO.FERIADO; });
+  var feriado = bloqueios.some(ehTipoFeriado_);
   var seAplicaNoDiaDaSemana = r.aplica(data, false);
   if (!seAplicaNoDiaDaSemana) return null;
 
@@ -150,6 +150,13 @@ function montarDiaSemanal_(data, r, c, u) {
     passado: data.getTime() < c.hoje.getTime(),
     feriado: feriado,
     bloqueios: bloqueios.map(tituloBloqueio_),
+    // para o gestor editar o feriado no próprio dia (vazio = não é feriado)
+    feriadoTipo: (bloqueios.filter(ehTipoFeriado_)[0] || {}).tipo || '',
+    feriadoDescricao: (function () {
+      var f = bloqueios.filter(ehTipoFeriado_)[0];
+      return f ? String(f.descricao || '').replace(/\s*\(importado\)\s*$/i, '').trim() : '';
+    })(),
+    feriadoVariosDias: bloqueios.filter(ehTipoFeriado_).some(function (b) { return !mesmoDia_(b.inicio, b.fim); }),
     aplica: aplica,
     horario: h.rotulo,
     vagas: vagas,
@@ -296,7 +303,7 @@ function avisosDeEscalarSemanal_(e, simulados, r, c, u, pessoas) {
   var dataBr = formatarDataBr_(e.data).substring(0, 5);
   var nomeAlvo = e.email === u.email ? 'Você' : pessoas[e.email].nomeExibicao;
   var bloqueios = bloqueiosDoDia_(c.bloqueios, e.data);
-  var feriado = bloqueios.some(function (b) { return b.tipo === BLOQUEIO.FERIADO; });
+  var feriado = bloqueios.some(ehTipoFeriado_);
   var treinamento = bloqueios.filter(function (b) { return b.tipo === BLOQUEIO.TREINAMENTO; });
 
   if (feriado) {
@@ -329,7 +336,7 @@ function avisosDeTirarSemanal_(lanc, simulados, r, c, u) {
   }
   var restantes = escaladosNoDia_(simulados, c.tipo, lanc.inicio).length;
   var vagas = r.vagas(lanc.inicio, c);
-  if (r.aplica(lanc.inicio, bloqueiosDoDia_(c.bloqueios, lanc.inicio).some(function (b) { return b.tipo === BLOQUEIO.FERIADO; })) && restantes < vagas) {
+  if (r.aplica(lanc.inicio, bloqueiosDoDia_(c.bloqueios, lanc.inicio).some(ehTipoFeriado_)) && restantes < vagas) {
     avisos.push(aviso_(c.tipo + '_ABAIXO_VAGAS', r.nome + ' de ' + dataBr + ' fica com vaga aberta',
       'Sem ' + quem + ' ficam ' + restantes + ' de ' + vagas + ' vaga' + (vagas === 1 ? '' : 's') + '.'));
   }

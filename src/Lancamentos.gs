@@ -139,6 +139,7 @@ function tituloBloqueio_(b) {
   var d = String(b.descricao || '').replace(/\s*\(importado\)\s*$/i, '').trim();
   if (d) return d;
   if (b.tipo === BLOQUEIO.FERIADO) return 'Feriado';
+  if (b.tipo === BLOQUEIO.FERIADO_FACULTATIVO) return 'Feriado facultativo';
   return b.tipo;
 }
 
@@ -146,6 +147,11 @@ function bloqueiosDoDia_(bloqueios, data) {
   return bloqueios.filter(function (b) { return dentroDe_(data, b.inicio, b.fim); });
 }
 
+/** Os dois tipos de feriado dispensam escala; só a etiqueta muda. */
+function ehTipoFeriado_(b) {
+  return b.tipo === BLOQUEIO.FERIADO || b.tipo === BLOQUEIO.FERIADO_FACULTATIVO;
+}
+
 function ehFeriado_(bloqueios, data) {
-  return bloqueiosDoDia_(bloqueios, data).some(function (b) { return b.tipo === BLOQUEIO.FERIADO; });
+  return bloqueiosDoDia_(bloqueios, data).some(ehTipoFeriado_);
 }

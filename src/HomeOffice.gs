@@ -108,7 +108,7 @@ function montarSemanaHO_(segunda, c, u) {
   });
   var presencial = presencialNaSemana_(c.bloqueios, segunda, sexta);
   var feriados = c.bloqueios.filter(function (b) {
-    return b.tipo === BLOQUEIO.FERIADO && b.inicio.getTime() <= sexta.getTime() && b.fim.getTime() >= segunda.getTime();
+    return ehTipoFeriado_(b) && b.inicio.getTime() <= sexta.getTime() && b.fim.getTime() >= segunda.getTime();
   });
   return {
     inicio: formatarDataIso_(segunda),

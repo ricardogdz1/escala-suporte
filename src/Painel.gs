@@ -105,7 +105,7 @@ function montarDia_(data, c) {
   var rotuloDia = DIAS_SEMANA[data.getDay()] + ' ' + diaCurto; // cabeçalho do grupo de avisos do dia
 
   var bloqueios = bloqueiosDoDia_(c.bloqueios, data);
-  var feriado = bloqueios.some(function (b) { return b.tipo === BLOQUEIO.FERIADO; });
+  var feriado = bloqueios.some(ehTipoFeriado_);
   var dia = {
     data: formatarDataIso_(data),
     rotulo: DIAS_SEMANA_CURTO[data.getDay()] + ' ' + data.getDate(),
