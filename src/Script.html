@@ -301,6 +301,7 @@
             '<p class="nota" style="margin-top:14px">Limites das escalas: mínimo do sábado, vagas do meio-dia e do plantão, férias.</p>' +
             '<div class="acoes" style="justify-content:flex-start;margin-top:8px">' +
               '<button type="button" class="botao neutro pequeno" id="abrirRegras">Regras da escala…</button>' +
+              '<button type="button" class="botao neutro pequeno" id="abrirPessoas">Pessoas…</button>' +
             '</div>'
           : '') +
         '<div class="acoes"><button type="button" class="botao neutro" id="prefCancelar">Cancelar</button>' +
@@ -321,6 +322,8 @@
       });
       var botaoRegras = m.querySelector('#abrirRegras');
       if (botaoRegras) botaoRegras.addEventListener('click', function () { fecharModal(); janelaRegras(); });
+      var botaoPessoas = m.querySelector('#abrirPessoas');
+      if (botaoPessoas) botaoPessoas.addEventListener('click', function () { fecharModal(); janelaPessoas(); });
 
       m.querySelectorAll('[data-todos]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -372,6 +375,97 @@
           .catch(function (e) { botao.disabled = false; mostrarErro(e); });
       });
     }).catch(function (e) { fecharModal(); mostrarErro(e); });
+  }
+
+  /** Gestor: adicionar pessoas e inativar/reativar. Ninguém é apagado: o histórico fica. */
+  function janelaPessoas() {
+    var m = abrirModal('<h2>Pessoas</h2><div class="carregando">Carregando…</div>');
+    api('obterPessoas').then(function (d) { desenharPessoas(m, d); }).catch(function (e) { fecharModal(); mostrarErro(e); });
+  }
+
+  function desenharPessoas(m, d) {
+    var ativos = d.pessoas.filter(function (p) { return p.ativo; });
+    var inativos = d.pessoas.filter(function (p) { return !p.ativo; });
+
+    var linha = function (p) {
+      var detalhe = [p.setor, p.perfil].filter(Boolean).join(' · ');
+      if (p.lancamentosFuturos) {
+        detalhe += ' · ' + p.lancamentosFuturos + (p.lancamentosFuturos > 1 ? ' lançamentos' : ' lançamento') + ' a partir de hoje';
+      }
+      return '<div class="linha-pessoa' + (p.ativo ? '' : ' inativa') + '">' +
+        '<span class="texto"><strong>' + esc(p.nomeExibicao) + '</strong>' +
+        '<span class="nota">' + esc(p.email) + ' · ' + esc(detalhe) + '</span></span>' +
+        (p.email === d.meuEmail && p.ativo
+          ? '<span class="etiqueta suave">você</span>'
+          : '<button type="button" class="botao neutro pequeno" data-email="' + esc(p.email) + '" data-ativar="' + (p.ativo ? '0' : '1') + '">' +
+            (p.ativo ? 'Inativar' : 'Reativar') + '</button>') +
+        '</div>';
+    };
+
+    m.innerHTML =
+      '<h2>Pessoas</h2>' +
+      '<p class="nota">Quem sai da equipe é <strong>inativado</strong>, nunca apagado: as escalas antigas continuam com o nome.</p>' +
+      '<div class="confirmacao-embutida oculto" id="confirmaPessoa"></div>' +
+      '<div class="lista-pessoas">' + ativos.map(linha).join('') + '</div>' +
+      (inativos.length ? '<h3 class="secao-config">Inativas</h3><div class="lista-pessoas">' + inativos.map(linha).join('') + '</div>' : '') +
+      '<h3 class="secao-config">Adicionar pessoa</h3>' +
+      '<label class="campo">E-mail corporativo<input type="email" id="novoEmail" placeholder="nome.sobrenome@' + esc(d.dominio) + '" autocomplete="off"></label>' +
+      '<label class="campo">Nome de exibição<input type="text" id="novoNome" placeholder="preenchido pelo e-mail" maxlength="60"></label>' +
+      '<label class="campo">Setor principal<select id="novoSetor">' +
+        d.setores.map(function (st) { return '<option value="' + esc(st) + '">' + esc(st) + '</option>'; }).join('') +
+      '</select></label>' +
+      '<label class="campo">Perfil<select id="novoPerfil">' +
+        d.perfis.map(function (pf) { return '<option value="' + esc(pf) + '">' + esc(pf) + '</option>'; }).join('') +
+      '</select></label>' +
+      '<label class="campo">Entrou na equipe em<input type="date" id="novaData" value="' + esc(d.hoje) + '"></label>' +
+      '<div class="acoes"><button type="button" class="botao neutro" data-acao="fechar">Fechar</button>' +
+      '<button type="button" class="botao" data-acao="adicionar">Adicionar</button></div>';
+
+    m.querySelector('[data-acao="fechar"]').addEventListener('click', fecharModal);
+
+    // sugere o nome a partir do e-mail, sem apagar o que o gestor digitou
+    var campoEmail = m.querySelector('#novoEmail');
+    var campoNome = m.querySelector('#novoNome');
+    campoEmail.addEventListener('blur', function () {
+      if (campoNome.value.trim()) return;
+      var local = campoEmail.value.split('@')[0] || '';
+      campoNome.value = local.split(/[._-]+/).filter(Boolean)
+        .map(function (x) { return x.charAt(0).toUpperCase() + x.slice(1).toLowerCase(); }).join(' ');
+    });
+
+    m.querySelector('[data-acao="adicionar"]').addEventListener('click', function () {
+      var botao = m.querySelector('[data-acao="adicionar"]');
+      botao.disabled = true;
+      api('adicionarPessoa', {
+        email: campoEmail.value,
+        nome: campoNome.value,
+        nomeExibicao: campoNome.value,
+        setor: m.querySelector('#novoSetor').value,
+        perfil: m.querySelector('#novoPerfil').value,
+        dataEntrada: m.querySelector('#novaData').value
+      }).then(function (r) {
+        toast(r.nome + ' entrou no cadastro.');
+        limparRespostasGuardadas();
+        return api('obterPessoas').then(function (novo) { desenharPessoas(m, novo); });
+      }).catch(function (e) { botao.disabled = false; mostrarErro(e); });
+    });
+
+    m.querySelectorAll('[data-email]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var ativar = b.dataset.ativar === '1';
+        b.disabled = true;
+        chamarComConfirmacao('definirPessoaAtiva', { email: b.dataset.email, ativo: ativar },
+          { painel: m.querySelector('#confirmaPessoa'),
+            titulo: ativar ? 'Reativar' : 'Inativar', textoBotao: ativar ? 'Reativar mesmo assim' : 'Inativar mesmo assim' })
+          .then(function (r) {
+            if (!r) { b.disabled = false; return; }
+            toast(ativar ? 'Pessoa reativada.' : 'Pessoa inativada.');
+            limparRespostasGuardadas();
+            return api('obterPessoas').then(function (novo) { desenharPessoas(m, novo); });
+          })
+          .catch(function (e) { b.disabled = false; mostrarErro(e); });
+      });
+    });
   }
 
   window.addEventListener('DOMContentLoaded', function () {

@@ -10,7 +10,8 @@ GERAL, CONTABILIDADE, EMISSÃO, SEMENTES, ATUALIZAÇÃO, AQILA, CADASTROS (hoje 
 
 ## Perfis
 - **Colaborador:** lança e edita os próprios registros; propõe e aceita trocas.
-- **Gestor:** vê e edita tudo, aprova férias, vê o painel de pendências e recebe o resumo semanal.
+- **Gestor:** vê e edita tudo, aprova férias, vê o painel de pendências e recebe o resumo semanal. Pelo app também **cadastra e inativa pessoas** (Configurações › Pessoas), marca **sábado de treinamento**, marca **feriados** e edita as **regras da escala**.
+- **Cadastro de pessoas:** adicionar pede e-mail do domínio da `Config`, nome de exibição (sugerido pelo e-mail), setor principal, perfil e data de entrada. Ninguém é apagado — sai da equipe = `Ativo = Não`, para o histórico continuar legível. Inativar alguém com lançamentos futuros ou que seja o único gestor ativo gera aviso. Setores extras continuam na planilha.
 
 ## Sábado
 - Dois turnos: **8h às 11h** e **9h às 12h**.
