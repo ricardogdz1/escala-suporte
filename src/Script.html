@@ -44,22 +44,60 @@
     });
   }
 
-  // barra fina no topo enquanto o servidor está respondendo
-  var chamadasAbertas = 0;
-  var preCarga = null; // {feitas, total} durante o pré-carregamento
+  /**
+   * Barra do topo com progresso de verdade. O Apps Script não avisa o andamento de uma
+   * chamada, então o progresso vem do tempo: guardamos quanto cada função costuma levar
+   * (média das últimas execuções, no navegador) e a barra anda nesse ritmo, parando em 92%
+   * até a resposta chegar. Na primeira vez usa uma estimativa e se corrige sozinha depois.
+   */
+  var DURACAO_PADRAO = 1800;
+  var duracoes = (function () {
+    try { return JSON.parse(localStorage.getItem('duracoesEscala') || '{}'); } catch (e) { return {}; }
+  })();
+  function duracaoEsperada(funcao) { return duracoes[funcao] || DURACAO_PADRAO; }
+  function anotarDuracao(funcao, ms) {
+    // média móvel: acompanha o servidor sem oscilar a cada chamada
+    duracoes[funcao] = Math.round(duracoes[funcao] ? duracoes[funcao] * 0.7 + ms * 0.3 : ms);
+    try { localStorage.setItem('duracoesEscala', JSON.stringify(duracoes)); } catch (e) { /* sem localStorage: só perde a calibração */ }
+  }
+
+  var emVoo = [];            // chamadas em aberto: {funcao, inicio, esperado}
+  var concluidoNoLote = 0;   // quantas já responderam no lote atual
+  var totalDoLote = 0;       // chamadas do lote (a pré-carga é sequencial: tudo conta como um lote)
+  var animacao = null;
+  var fecharLote = null;
+
+  function fracaoDaChamada(c) {
+    var decorrido = Date.now() - c.inicio;
+    var f = decorrido / c.esperado;
+    // desacelera no fim: nunca finge que terminou
+    return f < 0.92 ? f : 0.92 + 0.08 * (1 - Math.exp(-(f - 0.92)));
+  }
+
   function pintarBarra() {
     var barra = document.getElementById('barraCarregando');
     if (!barra) return;
-    var ativa = chamadasAbertas > 0;
-    barra.classList.toggle('ativa', ativa);
     var pedaco = barra.firstElementChild;
-    if (preCarga && preCarga.total) {
-      pedaco.style.width = Math.round(100 * preCarga.feitas / preCarga.total) + '%';
-      pedaco.classList.remove('indefinida');
-    } else {
-      pedaco.style.width = '';
-      pedaco.classList.toggle('indefinida', ativa);
+    if (!emVoo.length) {
+      if (!totalDoLote || fecharLote) return;
+      pedaco.style.width = '100%';
+      // espera um instante antes de encerrar: chamadas encadeadas (a pré-carga, ou salvar
+      // e redesenhar) continuam o mesmo lote em vez de reiniciar a barra do zero
+      fecharLote = setTimeout(function () {
+        fecharLote = null;
+        if (emVoo.length) return;
+        barra.classList.remove('ativa');
+        totalDoLote = 0; concluidoNoLote = 0;
+        if (animacao) { clearInterval(animacao); animacao = null; }
+        setTimeout(function () { if (!emVoo.length) pedaco.style.width = '0%'; }, 250);
+      }, 400);
+      return;
     }
+    if (fecharLote) { clearTimeout(fecharLote); fecharLote = null; }
+    barra.classList.add('ativa');
+    var soma = concluidoNoLote;
+    emVoo.forEach(function (c) { soma += fracaoDaChamada(c); });
+    pedaco.style.width = Math.min(99, Math.round(100 * soma / Math.max(totalDoLote, 1))) + '%';
   }
 
   window.api = function (funcao) {
@@ -68,14 +106,24 @@
       if (INVALIDA[funcao]) esquecerLeituras(INVALIDA[funcao]);
       else respostasGuardadas = {};
     }
-    chamadasAbertas++;
+
+    var chamada = { funcao: funcao, inicio: Date.now(), esperado: duracaoEsperada(funcao) };
+    emVoo.push(chamada);
+    totalDoLote++;
+    if (!animacao) animacao = setInterval(pintarBarra, 100);
     pintarBarra();
-    var encerrar = function () { chamadasAbertas--; pintarBarra(); };
+
+    var encerrar = function () {
+      anotarDuracao(funcao, Date.now() - chamada.inicio);
+      emVoo.splice(emVoo.indexOf(chamada), 1);
+      concluidoNoLote++;
+      pintarBarra();
+    };
     return new Promise(function (resolver, rejeitar) {
-      var chamada = google.script.run
+      var run = google.script.run
         .withSuccessHandler(function (d) { encerrar(); resolver(d); })
         .withFailureHandler(function (erro) { encerrar(); rejeitar(erro); });
-      chamada[funcao].apply(chamada, args);
+      run[funcao].apply(run, args);
     });
   };
 
@@ -94,6 +142,22 @@
     });
   };
   /**
+   * Aproveita os dados que a gravação já devolveu: guarda no cache e no estado da tela,
+   * evitando a segunda ida ao servidor (é o que fazia a tela "piscar" depois de salvar).
+   * @return {boolean} true se a resposta trouxe dados utilizáveis
+   */
+  window.aproveitarDados = function (resposta, funcaoLeitura, estadoDados) {
+    if (!resposta || !resposta.dados) return false;
+    var janelas = Object.keys(resposta.dados);
+    if (!janelas.length) return false;
+    janelas.forEach(function (j) {
+      respostasGuardadas[funcaoLeitura + ':' + JSON.stringify([j])] = resposta.dados[j];
+      if (estadoDados) estadoDados[j] = resposta.dados[j];
+    });
+    return true;
+  };
+
+  /**
    * Busca as telas que o usuário ainda não abriu, uma de cada vez e em segundo plano,
    * para a troca de aba ser instantânea. Chamado depois que a primeira tela aparece:
    * a fila é sequencial de propósito, para não disputar com o que ele está olhando.
@@ -104,14 +168,12 @@
       .filter(function (c) { return c && !respostasGuardadas[c[0] + ':' + JSON.stringify(c[1])]; });
     if (!pendentes.length) return;
 
-    preCarga = { feitas: 0, total: pendentes.length };
-    pintarBarra();
     var proxima = function () {
       var c = pendentes.shift();
-      if (!c) { preCarga = null; pintarBarra(); return; }
+      if (!c) return;
       apiGuardada(c[0], c[1], function () {})
         .catch(function () { /* pré-carga é opcional: se falhar, a tela busca de novo ao abrir */ })
-        .then(function () { preCarga.feitas++; pintarBarra(); proxima(); });
+        .then(proxima);
     };
     proxima();
   }

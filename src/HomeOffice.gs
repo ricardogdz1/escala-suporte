@@ -317,7 +317,9 @@ function salvarHomeOffice(dados, confirmado) {
     });
   });
 
-  return { ok: true, reservadas: criados.length, canceladas: cancelar.length, avisosIgnorados: avisosReservar.length + avisosCancelar.length };
+  return comDadosAtualizados_(
+    { ok: true, reservadas: criados.length, canceladas: cancelar.length, avisosIgnorados: avisosReservar.length + avisosCancelar.length },
+    dados.janelas, obterHomeOffice);
 }
 
 /** "Pular minha vez": registra em FilaHO e a pessoa vai para o fim da fila da equipe. */

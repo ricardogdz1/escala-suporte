@@ -283,7 +283,8 @@
         if (e.email !== USUARIO.email) item.email = e.email;
         return item;
       }),
-      cancelar: Object.keys(estado.cancelar)
+      cancelar: Object.keys(estado.cancelar),
+      janelas: estado.janelas.slice()   // o servidor devolve estas telas já atualizadas
     };
     painel.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
     chamarComConfirmacao('salvarHomeOffice', dados, {
@@ -296,7 +297,8 @@
       if (r.reservadas) partes.push(r.reservadas === 1 ? '1 semana reservada' : r.reservadas + ' semanas reservadas');
       if (r.canceladas) partes.push(r.canceladas === 1 ? '1 cancelada' : r.canceladas + ' canceladas');
       toast(partes.join(' e ') + (r.avisosIgnorados ? ' (com aviso registrado)' : '') + '.');
-      carregar(ctx.corpo, ctx.acoes);
+      if (aproveitarDados(r, 'obterHomeOffice', estado.dados)) desenhar(ctx.corpo, ctx.acoes, mesclar());
+      else carregar(ctx.corpo, ctx.acoes);
     }).catch(function (e) { desenharPainel(ctx); mostrarErro(e); });
   }
 

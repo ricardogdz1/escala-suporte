@@ -329,7 +329,8 @@
         if (e.treinamento) { item.treinamento = true; item.observacao = e.observacao || ''; }
         return item;
       }),
-      cancelar: Object.keys(estado.cancelar)
+      cancelar: Object.keys(estado.cancelar),
+      janelas: estado.janelas.slice()   // o servidor devolve estas telas já atualizadas
     };
     painel.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
     chamarComConfirmacao('salvarSabados', dados, {
@@ -342,7 +343,8 @@
       if (r.escalados) partes.push(r.escalados === 1 ? '1 escala salva' : r.escalados + ' escalas salvas');
       if (r.cancelados) partes.push(r.cancelados === 1 ? '1 retirada' : r.cancelados + ' retiradas');
       toast(partes.join(' e ') + (r.avisosIgnorados ? ' (com aviso registrado)' : '') + '.');
-      carregar(ctx.corpo, ctx.acoes);
+      if (aproveitarDados(r, 'obterSabados', estado.dados)) desenhar(ctx.corpo, ctx.acoes, mesclar());
+      else carregar(ctx.corpo, ctx.acoes);
     }).catch(function (e) { desenharPainel(ctx); mostrarErro(e); });
   }
 

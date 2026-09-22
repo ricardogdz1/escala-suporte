@@ -295,7 +295,9 @@ function salvarSemanal(tipo, dados, confirmado) {
     });
   });
 
-  return { ok: true, escalados: criados.length, cancelados: cancelar.length, avisosIgnorados: avisosEscalar.length + avisosCancelar.length };
+  return comDadosAtualizados_(
+    { ok: true, escalados: criados.length, cancelados: cancelar.length, avisosIgnorados: avisosEscalar.length + avisosCancelar.length },
+    dados.janelas, function (j) { return obterSemanas(tipo, j); });
 }
 
 function avisosDeEscalarSemanal_(e, simulados, r, c, u, pessoas) {

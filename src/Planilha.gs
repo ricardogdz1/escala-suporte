@@ -118,6 +118,26 @@ function cabecalhoDaAba_(aba) {
     .map(function (c) { return String(c).trim(); });
 }
 
+/**
+ * Anexa à resposta de uma gravação a tela já recarregada, para o cliente não
+ * precisar de uma segunda chamada (é o round-trip que mais pesa no uso).
+ * @param {Object} resposta  o que a função de gravação ia devolver
+ * @param {string[]} janelas os blocos que o cliente tem abertos
+ * @param {Function} montar  função que devolve os dados de uma janela
+ */
+function comDadosAtualizados_(resposta, janelas, montar) {
+  if (!janelas || !janelas.length) return resposta;
+  resposta.dados = {};
+  janelas.slice(0, 4).forEach(function (j) {   // limite: o cliente raramente tem mais que isso aberto
+    try {
+      resposta.dados[j] = montar(j);
+    } catch (e) {
+      delete resposta.dados[j];                 // se falhar, o cliente busca do jeito antigo
+    }
+  });
+  return resposta;
+}
+
 /** ID curto e único para lançamentos, bloqueios e trocas. */
 function gerarId_() {
   return Utilities.getUuid().replace(/-/g, '').substring(0, 12);

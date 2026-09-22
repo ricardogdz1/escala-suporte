@@ -262,12 +262,12 @@ function salvarSabados(dados, confirmado) {
     });
   });
 
-  return {
+  return comDadosAtualizados_({
     ok: true,
     escalados: criados.length,
     cancelados: cancelar.length,
     avisosIgnorados: avisosEscalar.length + avisosCancelar.length
-  };
+  }, dados.janelas, obterSabados);
 }
 
 /** Avisos de colocar uma pessoa num sábado (considerando o estado simulado do lote). */
