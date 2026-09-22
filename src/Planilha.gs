@@ -165,6 +165,48 @@ function atualizarLinha_(nome, numeroLinha, obj) {
   esquecerAba_(nome);
 }
 
+/**
+ * Relê as abas grandes e renova o cache. Serve para o gatilho de aquecimento:
+ * sem ele, a primeira pessoa depois de 10 min parados espera a leitura inteira
+ * (medido: ~2 a 5 s contra ~0,3 s com o cache quente).
+ *
+ * Fora do expediente não faz nada, para não gastar cota à toa.
+ */
+function aquecerCache() {
+  var agora = new Date();
+  var diaDaSemana = agora.getDay();
+  var hora = agora.getHours();
+  if (diaDaSemana === 0 || hora < 6 || hora >= 20) return 'fora do expediente';
+
+  abasLidas_ = {};
+  ABAS_COM_CACHE.forEach(function (nome) {
+    try {
+      guardarAbaNoCache_(nome, lerAbaDaPlanilha_(nome));
+    } catch (e) {
+      // aba que ainda não existe (setup não rodou) não impede as outras
+    }
+  });
+  obterCadastro_();
+  obterConfigTudo_();
+  return 'cache renovado';
+}
+
+/** Roda uma vez no editor: passa a renovar o cache a cada 5 minutos. */
+function instalarAquecimento() {
+  removerAquecimento();
+  ScriptApp.newTrigger('aquecerCache').timeBased().everyMinutes(5).create();
+  Logger.log('Aquecimento instalado: o cache será renovado a cada 5 minutos, das 6h às 20h, de segunda a sábado.');
+}
+
+/** Desfaz o aquecimento. */
+function removerAquecimento() {
+  var removidos = 0;
+  ScriptApp.getProjectTriggers().forEach(function (g) {
+    if (g.getHandlerFunction() === 'aquecerCache') { ScriptApp.deleteTrigger(g); removidos++; }
+  });
+  Logger.log('Gatilhos de aquecimento removidos: ' + removidos);
+}
+
 /** Apaga uma linha da aba (as linhas seguintes sobem: releia antes de usar outro número). */
 function apagarLinha_(nome, numeroLinha) {
   aba_(nome).deleteRow(numeroLinha);

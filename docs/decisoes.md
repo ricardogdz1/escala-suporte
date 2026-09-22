@@ -46,7 +46,19 @@ Base: guias oficiais de boas práticas do Apps Script e do HTML Service.
 - **Menos idas ao servidor:** cache de respostas no cliente com invalidação seletiva, pré-carga das telas em segundo plano e gravação que já devolve a tela atualizada.
 - **Tarefas lentas fora do caminho:** agenda e e-mails por fila (abaixo).
 - **`/dev` é mais lento que `/exec`** por natureza: em desenvolvimento o Apps Script faz registro e validação extras. Medir sempre no link de produção.
+- **Aquecimento opcional** (`instalarAquecimento()`): um gatilho renova o cache a cada 5 minutos, das 6h às 20h, de segunda a sábado, para ninguém pagar a leitura completa. `removerAquecimento()` desfaz.
 - `medirDesempenho()` (no editor) mostra o tempo de cada tela com e sem cache.
+
+Medições de 22/09/2026 (no `/dev`, que é mais lento que o `/exec`), depois das otimizações:
+
+| tela | sem cache | execução nova (cache quente) |
+|---|---|---|
+| obterPainel | 5375 ms | 495 ms |
+| obterSabados | 2215 ms | 187 ms |
+| obterMeioDia | 2084 ms | 230 ms |
+| obterPlantao | 2044 ms | 209 ms |
+| obterHomeOffice | 3230 ms | 489 ms |
+| obterFerias | 2064 ms | 222 ms |
 
 ## Agenda e e-mails saem por uma fila
 Pedido do usuário (22/09/2026), por causa do tempo de espera ao confirmar um lançamento. Criar um evento custa de 0,3 a 0,8 s e um e-mail outro tanto; escalar cinco pessoas deixava a pessoa esperando vários segundos. Agora a gravação na planilha responde de imediato e as tarefas lentas vão para a aba `FilaTarefas`, processada por um gatilho poucos segundos depois (`Fila.gs`). Consequência aceita: o evento aparece na agenda com alguns segundos de atraso. Se o gatilho falhar, a tarefa é repetida até três vezes e sobra registrada na aba — `processarFilaAgora()` força o processamento.
