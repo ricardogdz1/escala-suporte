@@ -118,12 +118,21 @@ function avisosDaTroca_(a, b, u) {
   return avisos;
 }
 
+/** Responde assim que a planilha é gravada; agenda e e-mails saem pela fila (Fila.gs). */
+function proporTroca(dados, confirmado) {
+  try {
+    return proporTrocaImpl_(dados, confirmado);
+  } finally {
+    despacharFila_();
+  }
+}
+
 /**
  * Propõe uma troca.
  * @param {Object} dados {meu: id do meu lançamento, dele: id do lançamento do colega}
  * @param {boolean} confirmado true quando clicou em "Enviar mesmo assim"
  */
-function proporTroca(dados, confirmado) {
+function proporTrocaImpl_(dados, confirmado) {
   var u = exigirUsuario_();
   dados = dados || {};
   var meu = lancamentoPorId_(String(dados.meu || ''));
@@ -155,7 +164,7 @@ function proporTroca(dados, confirmado) {
   registrarAvisosIgnorados_(u, meu.id, avisos);
 
   var destinatario = pessoas[dele.email];
-  enviarEmail_({
+  enfileirarEmail_({
     para: dele.email,
     assunto: u.nomeExibicao + ' propôs uma troca: ' + rotuloLancamento_(dele) + ' ⇄ ' + rotuloLancamento_(meu),
     corpoHtml: '<p>Olá, ' + escaparHtml_(destinatario.nomeExibicao) + '.</p>' +
@@ -166,7 +175,6 @@ function proporTroca(dados, confirmado) {
       '<p><a href="' + urlDoApp_() + '?tela=painel">Abrir o Painel</a></p>',
     origem: 'proporTroca'
   });
-
   return { ok: true, id: id, avisosIgnorados: avisos.length };
 }
 
@@ -203,12 +211,21 @@ function listarMinhasTrocas_(u) {
   return { recebidas: recebidas.sort(porData), enviadas: enviadas.sort(porData) };
 }
 
+/** Responde assim que a planilha é gravada; agenda e e-mails saem pela fila (Fila.gs). */
+function responderTroca(dados, confirmado) {
+  try {
+    return responderTrocaImpl_(dados, confirmado);
+  } finally {
+    despacharFila_();
+  }
+}
+
 /**
  * Responde a uma troca recebida.
  * @param {Object} dados {id, aceitar: boolean}
  * @param {boolean} confirmado true quando clicou em "Aceitar mesmo assim"
  */
-function responderTroca(dados, confirmado) {
+function responderTrocaImpl_(dados, confirmado) {
   var u = exigirUsuario_();
   dados = dados || {};
   var t = listarTrocas_().filter(function (x) { return x.id === String(dados.id || ''); })[0];
@@ -222,7 +239,7 @@ function responderTroca(dados, confirmado) {
 
   if (!dados.aceitar) {
     atualizarLinha_(ABA_TROCAS, t._linha, { 'Status': TROCA_STATUS.RECUSADA, 'Respondida em': agora });
-    enviarEmail_({
+    enfileirarEmail_({
       para: t.proponente,
       assunto: u.nomeExibicao + ' recusou a troca',
       corpoHtml: '<p>Olá, ' + escaparHtml_(proponente.nomeExibicao) + '.</p><p>' + escaparHtml_(u.nomeExibicao) + ' recusou a troca proposta. Sua escala continua como estava.</p>' +
@@ -257,7 +274,7 @@ function responderTroca(dados, confirmado) {
   registrarAvisosIgnorados_(u, novos[1].id, avisos);
 
   // agenda: remove os eventos antigos e cria os novos
-  [lp, ld].forEach(function (x) { if (x.idEvento) removerEvento_(x.idEvento, 'responderTroca'); });
+  [lp, ld].forEach(function (x) { enfileirarRemocaoDeEvento_(x.idEvento, 'responderTroca'); });
   novos.forEach(function (lanc) {
     var idEvento = lanc.tipo === TIPO.SABADO
       ? criarEventoSabado_(lanc, pessoas[lanc.email])
@@ -267,7 +284,7 @@ function responderTroca(dados, confirmado) {
 
   var resumo = '<ul><li><strong>' + escaparHtml_(proponente.nomeExibicao) + '</strong> passa a ter ' + escaparHtml_(rotuloLancamento_(novos[0])) + '</li>' +
     '<li><strong>' + escaparHtml_(u.nomeExibicao) + '</strong> passa a ter ' + escaparHtml_(rotuloLancamento_(novos[1])) + '</li></ul>';
-  enviarEmail_({
+  enfileirarEmail_({
     para: t.proponente,
     assunto: u.nomeExibicao + ' aceitou a troca',
     corpoHtml: '<p>Olá, ' + escaparHtml_(proponente.nomeExibicao) + '.</p><p>' + escaparHtml_(u.nomeExibicao) + ' aceitou a troca. Escala e agenda já foram atualizadas:</p>' + resumo +
@@ -276,7 +293,7 @@ function responderTroca(dados, confirmado) {
   });
   var gestores = emailsGestores_().filter(function (e) { return e !== t.proponente && e !== u.email; });
   if (gestores.length) {
-    enviarEmail_({
+    enfileirarEmail_({
       para: gestores,
       assunto: 'Troca aceita: ' + proponente.nomeExibicao + ' ⇄ ' + u.nomeExibicao,
       corpoHtml: '<p>Uma troca foi aceita no Escala Suporte:</p>' + resumo +
@@ -288,8 +305,17 @@ function responderTroca(dados, confirmado) {
   return { ok: true, status: TROCA_STATUS.ACEITA, avisosIgnorados: avisos.length };
 }
 
-/** Quem propôs cancela a proposta enquanto ela está pendente. */
+/** Responde assim que a planilha é gravada; agenda e e-mails saem pela fila (Fila.gs). */
 function cancelarTroca(id) {
+  try {
+    return cancelarTrocaImpl_(id);
+  } finally {
+    despacharFila_();
+  }
+}
+
+/** Quem propôs cancela a proposta enquanto ela está pendente. */
+function cancelarTrocaImpl_(id) {
   var u = exigirUsuario_();
   var t = listarTrocas_().filter(function (x) { return x.id === String(id || ''); })[0];
   if (!t) throw new Error('Troca não encontrada.');
@@ -297,7 +323,7 @@ function cancelarTroca(id) {
   if (t.status !== TROCA_STATUS.PENDENTE) throw new Error('Essa troca já foi ' + t.status + '.');
   atualizarLinha_(ABA_TROCAS, t._linha, { 'Status': TROCA_STATUS.CANCELADA, 'Respondida em': new Date() });
   var pessoas = mapaPessoas_();
-  enviarEmail_({
+  enfileirarEmail_({
     para: t.destinatario,
     assunto: u.nomeExibicao + ' cancelou a proposta de troca',
     corpoHtml: '<p>Olá, ' + escaparHtml_(nomeDe_(pessoas, t.destinatario)) + '.</p><p>' + escaparHtml_(u.nomeExibicao) + ' cancelou a proposta de troca. Nada muda na sua escala.</p>',

@@ -187,6 +187,15 @@ function resumoMesSemanal_(tipo, u, c) {
   };
 }
 
+/** Responde assim que a planilha é gravada; agenda e e-mails saem pela fila (Fila.gs). */
+function salvarSemanal(tipo, dados, confirmado) {
+  try {
+    return salvarSemanalImpl_(tipo, dados, confirmado);
+  } finally {
+    despacharFila_();
+  }
+}
+
 /**
  * Salva um lote de mudanças no meio-dia ou no plantão.
  * @param {string} tipo TIPO.MEIO_DIA | TIPO.PLANTAO
@@ -197,7 +206,7 @@ function resumoMesSemanal_(tipo, u, c) {
  * Avisos de ESCALAR pedem confirmação (regra 1). Avisos de TIRAR não pedem (mesma decisão dos sábados),
  * mas continuam registrados em AvisosIgnorados.
  */
-function salvarSemanal(tipo, dados, confirmado) {
+function salvarSemanalImpl_(tipo, dados, confirmado) {
   var u = exigirUsuario_();
   var r = regrasSemanal_(tipo);
   dados = dados || {};
@@ -267,11 +276,9 @@ function salvarSemanal(tipo, dados, confirmado) {
   registrarAvisosIgnorados_(u, criados.length ? criados[0].id : '', avisosEscalar);
   registrarAvisosIgnorados_(u, cancelar.length ? cancelar[0].id : '', avisosCancelar);
 
-  cancelar.forEach(function (l) { if (l.idEvento) removerEvento_(l.idEvento, 'salvarSemanal'); });
-  criados.forEach(function (lanc) {
-    var idEvento = criarEventoSemanal_(lanc, pessoas[lanc.email], r);
-    if (idEvento) atualizarLancamento_(lanc.id, { 'ID evento agenda': idEvento });
-  });
+  // agenda e e-mails pela fila (Fila.gs)
+  cancelar.forEach(function (l) { enfileirarRemocaoDeEvento_(l.idEvento, 'salvarSemanal'); });
+  criados.forEach(function (lanc) { enfileirarEventoSemanal_(lanc, pessoas[lanc.email], r); });
 
   // E-mail para quem o gestor escalou (um por pessoa, com todas as datas)
   var porPessoa = {};
@@ -285,7 +292,7 @@ function salvarSemanal(tipo, dados, confirmado) {
     var itens = lancs.map(function (lanc) {
       return '<li><strong>' + formatarDataBr_(lanc.inicio) + '</strong> (' + DIAS_SEMANA[lanc.inicio.getDay()].toLowerCase() + '), ' + r.horario(lanc.inicio).rotulo + '</li>';
     }).join('');
-    enviarEmail_({
+    enfileirarEmail_({
       para: email,
       assunto: 'Você foi escalado(a) para o ' + r.nome.toLowerCase() + (lancs.length > 1 ? ' (' + lancs.length + ' dias)' : ' de ' + formatarDataBr_(lancs[0].inicio)),
       corpoHtml: '<p>Olá, ' + escaparHtml_(p.nomeExibicao) + '.</p>' +
@@ -294,7 +301,6 @@ function salvarSemanal(tipo, dados, confirmado) {
       origem: 'salvarSemanal'
     });
   });
-
   return comDadosAtualizados_(
     { ok: true, escalados: criados.length, cancelados: cancelar.length, avisosIgnorados: avisosEscalar.length + avisosCancelar.length },
     dados.janelas, function (j) { return obterSemanas(tipo, j); });
@@ -345,24 +351,20 @@ function avisosDeTirarSemanal_(lanc, simulados, r, c, u) {
   return avisos;
 }
 
-function criarEventoSemanal_(lanc, pessoa, r) {
+function enfileirarEventoSemanal_(lanc, pessoa, r) {
+  if (!pessoa) return;
   var h = r.horario(lanc.inicio);
   var d = lanc.inicio;
   var inicio = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h.inicio[0], h.inicio[1], 0);
   var fim = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h.fim[0], h.fim[1], 0);
-  try {
-    return criarEvento_({
-      titulo: r.tituloEvento(pessoa, d),
-      inicio: inicio,
-      fim: fim,
-      descricao: r.descricaoEvento,
-      convidados: [pessoa.email],
-      origem: 'salvarSemanal'
-    });
-  } catch (e) {
-    registrarNotificacao_('EVENTO', 'salvarSemanal', pessoa.email, '', r.nome + ' ' + formatarDataBr_(d), 'ERRO: ' + e.message);
-    return '';
-  }
+  enfileirarEvento_({
+    titulo: r.tituloEvento(pessoa, d),
+    inicio: inicio,
+    fim: fim,
+    descricao: r.descricaoEvento,
+    convidados: [pessoa.email],
+    origem: 'salvarSemanal'
+  }, lanc.id);
 }
 
 // Atalhos para o cliente (chamarComConfirmacao chama funcao(dados, confirmado))

@@ -192,13 +192,22 @@ function quemFaltaUsar_(email, segunda, c, reservasSimuladas, pulosSimulados) {
   return sit.itens.filter(function (x) { return x.email !== email && x.usos < sit.max && !x.deFerias; });
 }
 
+/** Responde assim que a planilha é gravada; agenda e e-mails saem pela fila (Fila.gs). */
+function salvarHomeOffice(dados, confirmado) {
+  try {
+    return salvarHomeOfficeImpl_(dados, confirmado);
+  } finally {
+    despacharFila_();
+  }
+}
+
 /**
  * Salva um lote de mudanças no home office.
  * @param {Object} dados {reservar: [{semana: "yyyy-MM-dd" (qualquer dia da semana), email?: string}], cancelar: [id]}
  * @param {boolean} confirmado true quando o usuário clicou em "Salvar mesmo assim"
  * Avisos de RESERVAR pedem confirmação; de CANCELAR só ficam registrados (mesma decisão dos sábados).
  */
-function salvarHomeOffice(dados, confirmado) {
+function salvarHomeOfficeImpl_(dados, confirmado) {
   var u = exigirUsuario_();
   dados = dados || {};
 
@@ -293,10 +302,9 @@ function salvarHomeOffice(dados, confirmado) {
   registrarAvisosIgnorados_(u, criados.length ? criados[0].id : '', avisosReservar);
   registrarAvisosIgnorados_(u, cancelar.length ? cancelar[0].id : '', avisosCancelar);
 
-  cancelar.forEach(function (l) { if (l.idEvento) removerEvento_(l.idEvento, 'salvarHomeOffice'); });
+  cancelar.forEach(function (l) { enfileirarRemocaoDeEvento_(l.idEvento, 'salvarHomeOffice'); });
   criados.forEach(function (lanc) {
-    var idEvento = criarEventoHomeOffice_(lanc, c.pessoas[lanc.email]);
-    if (idEvento) atualizarLancamento_(lanc.id, { 'ID evento agenda': idEvento });
+    enfileirarEventoHomeOffice_(lanc, c.pessoas[lanc.email]);
   });
 
   var porPessoa = {};
@@ -307,7 +315,7 @@ function salvarHomeOffice(dados, confirmado) {
   Object.keys(porPessoa).forEach(function (email) {
     var p = c.pessoas[email];
     var itens = porPessoa[email].map(function (lanc) { return '<li><strong>' + tituloSemanaHO_(lanc.inicio, lanc.fim) + '</strong></li>'; }).join('');
-    enviarEmail_({
+    enfileirarEmail_({
       para: email,
       assunto: 'Home office reservado para você',
       corpoHtml: '<p>Olá, ' + escaparHtml_(p.nomeExibicao) + '.</p>' +
@@ -316,7 +324,6 @@ function salvarHomeOffice(dados, confirmado) {
       origem: 'salvarHomeOffice'
     });
   });
-
   return comDadosAtualizados_(
     { ok: true, reservadas: criados.length, canceladas: cancelar.length, avisosIgnorados: avisosReservar.length + avisosCancelar.length },
     dados.janelas, obterHomeOffice);
@@ -335,19 +342,15 @@ function pularVezHomeOffice() {
   return { ok: true, fila: montarFilaHO_(contextoHomeOffice_(), inicioDaSemana_(hoje_()), u) };
 }
 
-function criarEventoHomeOffice_(lanc, pessoa) {
-  try {
-    return criarEvento_({
-      titulo: 'Home office – ' + pessoa.nomeExibicao,
-      inicio: lanc.inicio,
-      fim: lanc.fim,
-      diaInteiro: true,
-      descricao: 'Semana de home office. Lançado pelo Escala Suporte.',
-      convidados: [pessoa.email],
-      origem: 'salvarHomeOffice'
-    });
-  } catch (e) {
-    registrarNotificacao_('EVENTO', 'salvarHomeOffice', pessoa.email, '', 'Home office ' + formatarDataBr_(lanc.inicio), 'ERRO: ' + e.message);
-    return '';
-  }
+function enfileirarEventoHomeOffice_(lanc, pessoa) {
+  if (!pessoa) return;
+  enfileirarEvento_({
+    titulo: 'Home office – ' + pessoa.nomeExibicao,
+    inicio: lanc.inicio,
+    fim: lanc.fim,
+    diaInteiro: true,
+    descricao: 'Semana de home office. Lançado pelo Escala Suporte.',
+    convidados: [pessoa.email],
+    origem: 'salvarHomeOffice'
+  }, lanc.id);
 }

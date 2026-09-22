@@ -40,6 +40,9 @@ Pedido do usuário (22/09/2026). Três mudanças no cliente:
 - **Pré-carga em segundo plano:** 1,5 s depois de a primeira tela aparecer, as demais são buscadas uma de cada vez (cada tela declara `precarregar`). Sequencial de propósito: o Apps Script enfileira chamadas do mesmo usuário, e disparar tudo junto atrasaria a tela que a pessoa está olhando. Trocar de aba passa a ser instantâneo.
 - **Barra fina no topo** enquanto o servidor responde, com progresso real durante a pré-carga. Preferida a uma tela de espera bloqueante: mostra atividade sem impedir o uso.
 
+## Agenda e e-mails saem por uma fila
+Pedido do usuário (22/09/2026), por causa do tempo de espera ao confirmar um lançamento. Criar um evento custa de 0,3 a 0,8 s e um e-mail outro tanto; escalar cinco pessoas deixava a pessoa esperando vários segundos. Agora a gravação na planilha responde de imediato e as tarefas lentas vão para a aba `FilaTarefas`, processada por um gatilho poucos segundos depois (`Fila.gs`). Consequência aceita: o evento aparece na agenda com alguns segundos de atraso. Se o gatilho falhar, a tarefa é repetida até três vezes e sobra registrada na aba — `processarFilaAgora()` força o processamento.
+
 ## Agenda em sentido único
 O sistema é a fonte da verdade e envia para o Google Agenda. Mudanças feitas direto na agenda não voltam para o sistema (evita conflitos). O ID de cada evento criado é guardado para atualizar ou apagar depois.
 

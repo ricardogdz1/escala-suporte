@@ -292,13 +292,22 @@ function previaFerias(dados) {
   return { dias: diasCorridos_(inicio, fim), avisos: avisosFerias_(email, inicio, fim, String(dados.id || ''), c, u) };
 }
 
+/** Responde assim que a planilha é gravada; agenda e e-mails saem pela fila (Fila.gs). */
+function salvarFerias(dados, confirmado) {
+  try {
+    return salvarFeriasImpl_(dados, confirmado);
+  } finally {
+    despacharFila_();
+  }
+}
+
 /**
  * Cria ou atualiza um período de férias.
  * @param {Object} dados {id?, inicio, fim, acao: 'rascunho'|'solicitar', email? (gestor), observacao?}
  * @param {boolean} confirmado true quando clicou em "Enviar mesmo assim"
  * Rascunho não pede confirmação de avisos (não conta no saldo nem para os colegas). Solicitar pede.
  */
-function salvarFerias(dados, confirmado) {
+function salvarFeriasImpl_(dados, confirmado) {
   var u = exigirUsuario_();
   dados = dados || {};
   var inicio = paraData_(dados.inicio), fim = paraData_(dados.fim);
@@ -344,7 +353,7 @@ function salvarFerias(dados, confirmado) {
     var rotulo = formatarDataBr_(inicio) + ' a ' + formatarDataBr_(fim) + ' (' + diasCorridos_(inicio, fim) + ' dias)';
     var gestores = emailsGestores_().filter(function (e) { return e !== u.email; });
     if (gestores.length) {
-      enviarEmail_({
+      enfileirarEmail_({
         para: gestores,
         assunto: 'Solicitação de férias: ' + pessoa.nomeExibicao + ' · ' + rotulo,
         corpoHtml: '<p><strong>' + escaparHtml_(pessoa.nomeExibicao) + '</strong> solicitou férias de <strong>' + escaparHtml_(rotulo) + '</strong>.</p>' +
@@ -358,8 +367,17 @@ function salvarFerias(dados, confirmado) {
   return { ok: true, id: lanc.id, status: status, avisosIgnorados: avisos.length };
 }
 
-/** Cancela um período (a própria pessoa: rascunho/solicitada/devolvida; gestor: qualquer, exceto encaminhada). */
+/** Responde assim que a planilha é gravada; agenda e e-mails saem pela fila (Fila.gs). */
 function cancelarFerias(id) {
+  try {
+    return cancelarFeriasImpl_(id);
+  } finally {
+    despacharFila_();
+  }
+}
+
+/** Cancela um período (a própria pessoa: rascunho/solicitada/devolvida; gestor: qualquer, exceto encaminhada). */
+function cancelarFeriasImpl_(id) {
   var u = exigirUsuario_();
   var x = listarLancamentos_({ tipos: [TIPO.FERIAS] }).filter(function (f) { return f.id === String(id || ''); })[0];
   if (!x) throw new Error('Período não encontrado.');
@@ -368,9 +386,9 @@ function cancelarFerias(id) {
   if (!u.gestor && [STATUS.RASCUNHO, STATUS.SOLICITADA, STATUS.DEVOLVIDA].indexOf(x.status) < 0) throw new Error('Esse período já foi ' + x.status + '; fale com o gestor.');
   if (x.status === STATUS.ENCAMINHADA) throw new Error('Período já encaminhado ao RH; ajuste com o RH antes de cancelar aqui.');
   atualizarLancamento_(x.id, { 'Status': STATUS.CANCELADO });
-  if (x.idEvento) removerEvento_(x.idEvento, 'cancelarFerias');
+  enfileirarRemocaoDeEvento_(x.idEvento, 'cancelarFerias');
   if (x.email !== u.email) {
-    enviarEmail_({
+    enfileirarEmail_({
       para: x.email,
       assunto: 'Suas férias de ' + rotuloPeriodo_(x) + ' foram canceladas',
       corpoHtml: '<p>' + escaparHtml_(u.nomeExibicao) + ' cancelou o período de férias <strong>' + escaparHtml_(rotuloPeriodo_(x)) + '</strong>.</p>',
@@ -380,12 +398,21 @@ function cancelarFerias(id) {
   return { ok: true };
 }
 
+/** Responde assim que a planilha é gravada; agenda e e-mails saem pela fila (Fila.gs). */
+function decidirFerias(dados, confirmado) {
+  try {
+    return decidirFeriasImpl_(dados, confirmado);
+  } finally {
+    despacharFila_();
+  }
+}
+
 /**
  * Decisão do gestor sobre uma solicitação.
  * @param {Object} dados {id, acao: 'aprovar'|'devolver'|'encaminhar', motivo?}
  * @param {boolean} confirmado true quando clicou em "Aprovar mesmo assim"
  */
-function decidirFerias(dados, confirmado) {
+function decidirFeriasImpl_(dados, confirmado) {
   var u = exigirGestor_();
   dados = dados || {};
   var c = contextoFerias_();
@@ -399,8 +426,8 @@ function decidirFerias(dados, confirmado) {
     if (x.status !== STATUS.SOLICITADA && x.status !== STATUS.APROVADA) throw new Error('Só solicitações ou aprovadas podem ser devolvidas.');
     var motivo = String(dados.motivo || '').trim().substring(0, 200);
     atualizarLancamento_(x.id, { 'Status': STATUS.DEVOLVIDA, 'Observação': motivo ? 'Devolvida: ' + motivo : 'Devolvida pelo gestor' });
-    if (x.idEvento) removerEvento_(x.idEvento, 'decidirFerias');
-    enviarEmail_({
+    enfileirarRemocaoDeEvento_(x.idEvento, 'decidirFerias');
+    enfileirarEmail_({
       para: x.email,
       assunto: 'Férias de ' + rotuloPeriodo_(x) + ': devolvida para ajuste',
       corpoHtml: '<p>Olá, ' + escaparHtml_(pessoa.nomeExibicao) + '.</p><p>' + escaparHtml_(u.nomeExibicao) + ' devolveu sua solicitação de férias de <strong>' + escaparHtml_(rotulo) + '</strong>' +
@@ -416,9 +443,8 @@ function decidirFerias(dados, confirmado) {
     if (avisos.length && !confirmado) return respostaComAvisos_(avisos);
     atualizarLancamento_(x.id, { 'Status': STATUS.APROVADA });
     registrarAvisosIgnorados_(u, x.id, avisos);
-    var idEvento = criarEventoFerias_(x, pessoa);
-    if (idEvento) atualizarLancamento_(x.id, { 'ID evento agenda': idEvento });
-    enviarEmail_({
+    enfileirarEventoFerias_(x, pessoa);
+    enfileirarEmail_({
       para: x.email,
       assunto: 'Férias aprovadas: ' + rotuloPeriodo_(x),
       corpoHtml: '<p>Olá, ' + escaparHtml_(pessoa.nomeExibicao) + '.</p><p>' + escaparHtml_(u.nomeExibicao) + ' aprovou suas férias de <strong>' + escaparHtml_(rotulo) + '</strong>. O próximo passo é o encaminhamento ao RH.</p>' + link,
@@ -430,7 +456,7 @@ function decidirFerias(dados, confirmado) {
   if (dados.acao === 'encaminhar') {
     if (x.status !== STATUS.APROVADA) throw new Error('Só férias aprovadas podem ser encaminhadas ao RH.');
     atualizarLancamento_(x.id, { 'Status': STATUS.ENCAMINHADA });
-    enviarEmail_({
+    enfileirarEmail_({
       para: x.email,
       assunto: 'Férias encaminhadas ao RH: ' + rotuloPeriodo_(x),
       corpoHtml: '<p>Olá, ' + escaparHtml_(pessoa.nomeExibicao) + '.</p><p>Suas férias de <strong>' + escaparHtml_(rotulo) + '</strong> foram encaminhadas ao RH.</p>' + link,
@@ -441,21 +467,17 @@ function decidirFerias(dados, confirmado) {
   throw new Error('Ação inválida.');
 }
 
-function criarEventoFerias_(x, pessoa) {
-  try {
-    return criarEvento_({
-      titulo: 'Férias – ' + pessoa.nomeExibicao,
-      inicio: x.inicio,
-      fim: x.fim,
-      diaInteiro: true,
-      descricao: 'Férias aprovadas. Lançado pelo Escala Suporte.',
-      convidados: [pessoa.email],
-      origem: 'decidirFerias'
-    });
-  } catch (e) {
-    registrarNotificacao_('EVENTO', 'decidirFerias', pessoa.email, '', 'Férias ' + formatarDataBr_(x.inicio), 'ERRO: ' + e.message);
-    return '';
-  }
+function enfileirarEventoFerias_(x, pessoa) {
+  if (!pessoa) return;
+  enfileirarEvento_({
+    titulo: 'Férias – ' + pessoa.nomeExibicao,
+    inicio: x.inicio,
+    fim: x.fim,
+    diaInteiro: true,
+    descricao: 'Férias aprovadas. Lançado pelo Escala Suporte.',
+    convidados: [pessoa.email],
+    origem: 'decidirFerias'
+  }, x.id);
 }
 
 /** Avisos de férias para o Painel: solicitações aguardando (gestor), sobreposições e prazo limite próximo (o meu). */

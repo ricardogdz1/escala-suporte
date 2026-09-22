@@ -120,6 +120,7 @@ function aplicarFormatacao_(ss) {
 
   formatarColunas_(ss, ABA_AVISOS_IGNORADOS, ['Quando'], FORMATO_DATA_HORA, LINHAS);
   formatarColunas_(ss, ABA_LOG_NOTIFICACOES, ['Quando'], FORMATO_DATA_HORA, LINHAS);
+  formatarColunas_(ss, ABA_FILA, ['Criada em'], FORMATO_DATA_HORA, LINHAS);
 
   var config = ss.getSheetByName(ABA_CONFIG);
   config.setColumnWidth(1, 220);

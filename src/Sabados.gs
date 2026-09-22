@@ -140,6 +140,15 @@ function meusSabadosNoAno_(email) {
   };
 }
 
+/** Responde assim que a planilha é gravada; agenda e e-mails saem pela fila (Fila.gs). */
+function salvarSabados(dados, confirmado) {
+  try {
+    return salvarSabadosImpl_(dados, confirmado);
+  } finally {
+    despacharFila_();
+  }
+}
+
 /**
  * Salva um lote de mudanças na escala de sábados.
  * @param {Object} dados {escalar: [{data: "yyyy-MM-dd", turno: "8h-11h"|"9h-12h", email?: string, treinamento?: boolean, observacao?: string}], cancelar: [id]}
@@ -149,7 +158,7 @@ function meusSabadosNoAno_(email) {
  * Avisos de ESCALAR pedem confirmação (regra 1). Avisos de TIRAR não pedem (decisão do usuário,
  * 21/09/2026), mas continuam registrados em AvisosIgnorados.
  */
-function salvarSabados(dados, confirmado) {
+function salvarSabadosImpl_(dados, confirmado) {
   var u = exigirUsuario_();
   dados = dados || {};
   var escalar = (dados.escalar || []).map(function (e) {
@@ -233,12 +242,9 @@ function salvarSabados(dados, confirmado) {
   registrarAvisosIgnorados_(u, criados.length ? criados[0].id : '', avisosEscalar);
   registrarAvisosIgnorados_(u, cancelar.length ? cancelar[0].id : '', avisosCancelar);
 
-  // Agenda
-  cancelar.forEach(function (l) { if (l.idEvento) removerEvento_(l.idEvento, 'salvarSabados'); });
-  criados.forEach(function (lanc) {
-    var idEvento = criarEventoSabado_(lanc, pessoas[lanc.email]);
-    if (idEvento) atualizarLancamento_(lanc.id, { 'ID evento agenda': idEvento });
-  });
+  // Agenda e e-mails saem pela fila (Fila.gs): a resposta não espera por eles
+  cancelar.forEach(function (l) { enfileirarRemocaoDeEvento_(l.idEvento, 'salvarSabados'); });
+  criados.forEach(function (lanc) { enfileirarEventoSabado_(lanc, pessoas[lanc.email]); });
 
   // E-mail para quem o gestor escalou (um por pessoa, com todas as datas)
   var porPessoa = {};
@@ -252,7 +258,7 @@ function salvarSabados(dados, confirmado) {
     var itens = lancs.map(function (lanc) {
       return '<li><strong>' + formatarDataBr_(lanc.inicio) + '</strong>, ' + HORARIO_TURNO[lanc.turno].rotulo + (lanc.treinamento ? ' (em treinamento)' : '') + '</li>';
     }).join('');
-    enviarEmail_({
+    enfileirarEmail_({
       para: email,
       assunto: lancs.length > 1 ? 'Você foi escalado(a) para ' + lancs.length + ' sábados' : 'Você foi escalado(a) para o sábado ' + formatarDataBr_(lancs[0].inicio),
       corpoHtml: '<p>Olá, ' + escaparHtml_(p.nomeExibicao) + '.</p>' +
@@ -261,7 +267,6 @@ function salvarSabados(dados, confirmado) {
       origem: 'salvarSabados'
     });
   });
-
   return comDadosAtualizados_({
     ok: true,
     escalados: criados.length,
@@ -328,23 +333,17 @@ function avisosDeTirar_(lanc, simulados, c, u) {
   return avisos;
 }
 
-function criarEventoSabado_(lanc, pessoa) {
+function enfileirarEventoSabado_(lanc, pessoa) {
   var h = HORARIO_TURNO[lanc.turno];
-  if (!h) return '';
+  if (!h || !pessoa) return;
   var inicio = new Date(lanc.inicio.getFullYear(), lanc.inicio.getMonth(), lanc.inicio.getDate(), h.inicio, 0, 0);
   var fim = new Date(lanc.inicio.getFullYear(), lanc.inicio.getMonth(), lanc.inicio.getDate(), h.fim, 0, 0);
-  try {
-    return criarEvento_({
-      titulo: 'Sábado ' + h.rotulo + (lanc.treinamento ? ' (treinamento)' : '') + ' – ' + pessoa.nomeExibicao,
-      inicio: inicio,
-      fim: fim,
-      descricao: 'Escala de sábado do suporte. Lançado pelo Escala Suporte.',
-      convidados: [pessoa.email],
-      origem: 'salvarSabados'
-    });
-  } catch (e) {
-    // a escala vale mesmo se a agenda falhar; fica registrado no log
-    registrarNotificacao_('EVENTO', 'salvarSabados', pessoa.email, '', 'Sábado ' + formatarDataBr_(lanc.inicio), 'ERRO: ' + e.message);
-    return '';
-  }
+  enfileirarEvento_({
+    titulo: 'Sábado ' + h.rotulo + (lanc.treinamento ? ' (treinamento)' : '') + ' – ' + pessoa.nomeExibicao,
+    inicio: inicio,
+    fim: fim,
+    descricao: 'Escala de sábado do suporte. Lançado pelo Escala Suporte.',
+    convidados: [pessoa.email],
+    origem: 'salvarSabados'
+  }, lanc.id);
 }

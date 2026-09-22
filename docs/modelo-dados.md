@@ -17,4 +17,5 @@ Implementado em `src/Constantes.gs` (cabeçalhos) e `src/Setup.gs` (cria as abas
 - **AvisosIgnorados:** Quando | E-mail | Lançamento | Código do aviso | Texto do aviso
 - **Preferencias:** E-mail | Receber e-mails (Sim/Não) | Convites na agenda (Sim/Não) | Atualizado em | Avisos sábados | Avisos meio-dia | Avisos plantão | Avisos home office | Avisos férias — editada pela própria pessoa no app ("Configurações"); quem não tem linha (ou célula vazia) usa o padrão: e-mails Não, agenda Não, avisos Sim exceto plantão.
 - **MapaNomes:** Nome na planilha antiga | E-mail | Observação — só para a importação.
+- **FilaTarefas:** ID | Tipo (EVENTO_CRIAR, EVENTO_REMOVER, EMAIL) | Dados (JSON) | Criada em | Tentativas | Status (pendente, feita, falhou) | Erro — eventos de agenda e e-mails esperam aqui e saem logo depois da gravação, para o usuário não aguardar por eles. Linhas concluídas somem após uma semana.
 - **LogNotificacoes:** Quando | Tipo (EMAIL, EVENTO) | Origem | Destinatários originais | Destinatário real | Assunto/título | Resultado — registro de tudo que saiu do sistema (permite conferir que o modo teste desviou os envios).

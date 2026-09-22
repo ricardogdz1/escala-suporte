@@ -20,12 +20,13 @@ var ABA_LOG_NOTIFICACOES = 'LogNotificacoes';
 var ABA_MAPA_NOMES = 'MapaNomes';
 var ABA_RELATORIO_IMPORTACAO = 'RelatorioImportacao';
 var ABA_PREFERENCIAS = 'Preferencias';
+var ABA_FILA = 'FilaTarefas';
 
 // Abas do sistema, na ordem em que o setup() as cria
 var ABAS_DO_SISTEMA = [
   ABA_CONFIG, ABA_LANCAMENTOS, ABA_BLOQUEIOS, ABA_FILA_HO,
   ABA_SALDO_FERIAS, ABA_TROCAS, ABA_AVISOS_IGNORADOS, ABA_LOG_NOTIFICACOES,
-  ABA_MAPA_NOMES, ABA_PREFERENCIAS
+  ABA_MAPA_NOMES, ABA_PREFERENCIAS, ABA_FILA
 ];
 
 // Cabeçalhos de cada aba criada pelo setup(). A ordem define as colunas.
@@ -50,6 +51,8 @@ CABECALHOS[ABA_LOG_NOTIFICACOES] = [
 CABECALHOS[ABA_MAPA_NOMES] = ['Nome na planilha antiga', 'E-mail', 'Observação'];
 CABECALHOS[ABA_RELATORIO_IMPORTACAO] = ['Seção', 'Item', 'Detalhe'];
 // Cada pessoa liga/desliga suas notificações no app; sem linha = Sim/Sim
+// Eventos de agenda e e-mails saem por aqui, logo depois da gravação (ver Fila.gs)
+CABECALHOS[ABA_FILA] = ['ID', 'Tipo', 'Dados', 'Criada em', 'Tentativas', 'Status', 'Erro'];
 CABECALHOS[ABA_PREFERENCIAS] = ['E-mail', 'Receber e-mails', 'Convites na agenda', 'Atualizado em',
   'Avisos sábados', 'Avisos meio-dia', 'Avisos plantão', 'Avisos home office', 'Avisos férias'];
 
