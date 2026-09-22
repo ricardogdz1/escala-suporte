@@ -48,8 +48,19 @@ Decisões: sem tela nova (ações nas telas e em Configurações); feriado facul
 - [x] **Sem calendário separado** (decisão do usuário, 22/09/2026): o evento sai da agenda da conta que roda o sistema e entra na agenda de cada pessoa, que é adicionada como participante. `ID_CALENDARIO_PRODUCAO` fica vazio; preencher só se um dia quiserem um calendário próprio.
 - ⛔ "Local de trabalho: casa" e "fora do escritório" **na agenda pessoal**: o Google só permite esses tipos de evento no calendário primário da própria pessoa, o que exigiria delegação de domínio (admin do Workspace). O home office continua como evento comum de dia inteiro.
 
-## Produção ⬜
-1. Apagar lançamentos de teste (manter cadastro): `apagarDadosDeExemplo()`
-2. Modo teste = Não (a partir daí e-mails e eventos vão para a equipe de verdade)
-3. Nova implantação: Aplicativo da Web, executar como o criador, acesso a qualquer pessoa em agro1.inf.br (link /exec)
-4. Proteger abas; dar acesso de editor ao gestor
+## Produção 🟨 (22/09/2026)
+Não existem dois bancos: teste e produção usam **a mesma planilha e o mesmo código**. O que muda é
+`Config > MODO_TESTE` (para onde vão e-mails e eventos) e qual link se usa.
+
+- [x] Implantação de produção criada (link `/exec`, versão 2): executa como o criador, acesso a qualquer pessoa em `agro1.inf.br`
+- [ ] `apagarDadosDeExemplo()` — tira só os lançamentos marcados como "exemplo"; os importados da planilha antiga ficam
+- [ ] Testar o `/exec` (o próprio gestor e, se possível, um colega)
+- [ ] `MODO_TESTE = Não` — **a partir daqui a equipe recebe e-mails e eventos de verdade**
+- [ ] Divulgar o link e proteger as abas da planilha; dar acesso de editor ao gestor
+
+### Links
+- Teste (`/dev`): sempre o código mais recente, só para quem edita o script — `AKfycbwpbaraP0mGgUvwlkX-QVvGVny53IWoGJ9wiQGobQ`
+- Produção (`/exec`): versão publicada, para a equipe — `AKfycbyN6Et8LhhLsFbmnYlQ6JIrH4wjznr6YL--sgNiXeeWAQJB1YVEIMtXvewftvcVuTg`
+
+Mudou o código? O `/dev` pega na hora; o `/exec` só depois de publicar uma versão nova
+(`clasp create-version` + `clasp redeploy <id da implantação> -v <versão>`).
