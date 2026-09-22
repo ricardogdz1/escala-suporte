@@ -458,8 +458,50 @@
 
     var lado = el('<div class="lado"></div>');
     lado.appendChild(el('<span class="etiqueta pilula ' + (s.contagemOk ? '' : 'ambar') + '">' + esc(s.contagemTexto) + '</span>'));
+    if (ctx.d.souGestor) lado.appendChild(botaoTreinamento(s, ctx));
     c.appendChild(lado);
     return c;
+  }
+
+  /** Gestor: liga/desliga o treinamento da equipe no sábado. */
+  function botaoTreinamento(s, ctx) {
+    var tem = !!s.treinamentoEquipe;
+    var b = el('<button type="button" class="botao discreto pequeno">' +
+      (tem ? 'Não é treinamento' : 'Marcar treinamento') + '</button>');
+    if (tem && s.treinamentoEquipe.variosDias) {
+      b.disabled = true;
+      b.title = 'Treinamento de vários dias: ajuste na aba Bloqueios da planilha.';
+      return b;
+    }
+    b.addEventListener('click', function () { confirmarTreinamento(s, ctx, !tem); });
+    return b;
+  }
+
+  /** Janela (não o painel lateral, que é das mudanças em aberto) para ligar/desligar o treinamento. */
+  function confirmarTreinamento(s, ctx, marcar) {
+    var m = abrirModal(
+      '<h2>' + (marcar ? 'Marcar treinamento da equipe' : 'Tirar o treinamento') + '</h2>' +
+      '<p class="nota">' + esc(rotuloData(s)) + '</p>' +
+      (marcar
+        ? '<p class="nota">O sábado deixa de cobrar mínimo e máximo de pessoas, e quem se escalar nele recebe um aviso.</p>' +
+          '<label class="campo">Descrição<input type="text" id="trDescricao" maxlength="200" value="Treinamento com toda a equipe"></label>'
+        : '<p class="nota">O sábado volta a cobrar mínimo, máximo e cobertura de setores.</p>') +
+      '<div class="acoes"><button type="button" class="botao neutro" data-acao="cancelar">Cancelar</button>' +
+      '<button type="button" class="botao escuro" data-acao="salvar">' + (marcar ? 'Marcar' : 'Tirar') + '</button></div>');
+
+    m.querySelector('[data-acao="cancelar"]').addEventListener('click', fecharModal);
+    m.querySelector('[data-acao="salvar"]').addEventListener('click', function () {
+      var campo = m.querySelector('#trDescricao');
+      m.querySelector('[data-acao="salvar"]').disabled = true;
+      api('definirTreinamentoDoSabado', { data: s.data, marcar: marcar, descricao: campo ? campo.value : '' })
+        .then(function () {
+          fecharModal();
+          toast(marcar ? 'Sábado marcado como treinamento.' : 'Treinamento removido.');
+          limparRespostasGuardadas();
+          carregar(ctx.corpo, ctx.acoes);
+        })
+        .catch(function (e) { fecharModal(); mostrarErro(e); });
+    });
   }
 
   /**
@@ -481,6 +523,11 @@
       linhas.appendChild(semTurno);
     }
     corpo.appendChild(linhas);
+    if (ctx.d.souGestor && s.treinamentoEquipe) {
+      var acoes = el('<div style="margin-top:12px"></div>');
+      acoes.appendChild(botaoTreinamento(s, ctx));
+      corpo.appendChild(acoes);
+    }
     return c;
   }
 

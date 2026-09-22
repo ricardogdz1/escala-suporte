@@ -85,6 +85,12 @@ function atualizarLinha_(nome, numeroLinha, obj) {
   esquecerAba_(nome);
 }
 
+/** Apaga uma linha da aba (as linhas seguintes sobem: releia antes de usar outro número). */
+function apagarLinha_(nome, numeroLinha) {
+  aba_(nome).deleteRow(numeroLinha);
+  esquecerAba_(nome);
+}
+
 /**
  * Cabeçalho para gravar numa aba do sistema, criando as colunas que faltarem.
  * Sem isso, uma coluna nova no código (e ainda não criada na planilha) faz a gravação

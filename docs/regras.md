@@ -22,6 +22,7 @@ GERAL, CONTABILIDADE, EMISSÃO, SEMENTES, ATUALIZAÇÃO, AQILA, CADASTROS (hoje 
 - A tela mostra o **mês atual + 11 meses** à frente. Cartões "Meses anteriores" (topo) e "Próximos meses" (fim) carregam mais 12 meses por clique, para ajustes em anos passados/futuros.
 - Ao se escalar, a pessoa pode marcar **"em treinamento"**: ela vai no sábado, mas não atende. Aparece no cartão (etiqueta azul) e **não conta** para o mínimo/máximo nem cobre setor. Na importação, células com texto contendo "treinamento" viram esse tipo de escala; o sábado só é bloqueado (treinamento da equipe) quando pelo menos `TREINAMENTO_EQUIPE_MIN` pessoas (Config, padrão 5) estão em treinamento nele.
 - A pessoa marca várias mudanças (entrar em X, sair de Y) e **salva tudo de uma vez**; o gestor faz o mesmo para qualquer pessoa.
+- **Só o gestor** marca um sábado como treinamento da equipe, pelo próprio cartão (botão "Marcar treinamento"). O sábado fica cinza, deixa de cobrar mínimo/máximo e cobertura, e quem se escalar nele recebe aviso. Treinamentos de vários dias (vindos da importação) só são ajustados na aba `Bloqueios`.
 - **Sair de um sábado não pede confirmação de aviso** (decisão do usuário, 21/09/2026): o aviso (abaixo do mínimo, setor descoberto) é registrado em `AvisosIgnorados` mesmo assim. Entrar num sábado segue o fluxo normal de "Salvar mesmo assim".
 
 ## Meio-dia

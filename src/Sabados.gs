@@ -94,6 +94,10 @@ function montarSabado_(data, c, u) {
   else if (total > c.max) contagemTexto = total + ' pessoas (máx. ' + c.max + ')';
   else contagemTexto = total + ' pessoa' + (total === 1 ? '' : 's');
 
+  // o gestor liga/desliga o treinamento da equipe pelo cartão; um treinamento de vários dias
+  // (vindo da importação) só pode ser ajustado na planilha
+  var treinoEquipe = bloqueios.filter(function (b) { return b.tipo === BLOQUEIO.TREINAMENTO; })[0];
+
   return {
     data: formatarDataIso_(data),
     rotulo: formatarDataBr_(data),
@@ -109,7 +113,12 @@ function montarSabado_(data, c, u) {
     contagemTexto: contagemTexto,
     setores: c.setoresAtivos.map(function (s) { return { nome: s, coberto: semCobertura.indexOf(s) < 0 }; }),
     problema: !bloqueado && (!contagemOk || (total > 0 && semCobertura.length > 0)),
-    minha: escalados.some(function (x) { return x.email === u.email; })
+    minha: escalados.some(function (x) { return x.email === u.email; }),
+    treinamentoEquipe: treinoEquipe ? {
+      descricao: tituloBloqueio_(treinoEquipe),
+      variosDias: !mesmoDia_(treinoEquipe.inicio, treinoEquipe.fim)
+    } : null,
+    feriado: bloqueios.filter(function (b) { return b.tipo === BLOQUEIO.FERIADO; }).map(tituloBloqueio_)[0] || ''
   };
 }
 

@@ -35,6 +35,14 @@ Status: ⬜ não iniciado · 🟨 em andamento · ✅ concluído
 - [x] Saldo, rascunho/solicitar/aprovar/devolver/encaminhar, linha do tempo da equipe com sobreposições e coletivas, avisos (CLT desligada até o RH confirmar), e-mails, evento na agenda ao aprovar (`Ferias.gs`, `TelaFerias.html`)
 - [ ] Testar no /dev e ajustar
 
+## Fase 7 – Gestor 🟨 (22/09/2026)
+Decisões: sem tela nova (ações nas telas e em Configurações); feriado facultativo não cobra escala, muda só a etiqueta; sem "ver como colaborador".
+- [x] Sábado de treinamento da equipe pelo cartão (`Bloqueios.gs`, `TelaSabados.html`)
+- [ ] Feriados obrigatório/facultativo na grade de Meio-dia e Plantão
+- [ ] Regras (mín/máx do sábado e vagas) numa janela de Configurações
+- [ ] Pessoas: adicionar e inativar numa janela de Configurações
+- Já existia: escalar/tirar qualquer pessoa nas quatro telas e todo o fluxo de status das férias
+
 ## Fase 6 – Google Agenda ⬜
 - Calendário compartilhado "Escala Suporte" (convidando a pessoa)
 - Depois: "local de trabalho: casa" e "fora do escritório" na agenda pessoal
