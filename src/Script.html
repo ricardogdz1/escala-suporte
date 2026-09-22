@@ -402,24 +402,25 @@
     var inativos = d.pessoas.filter(function (p) { return !p.ativo; });
 
     var linha = function (p) {
-      var detalhe = [p.setor, p.perfil].filter(Boolean).join(' · ');
-      if (p.lancamentosFuturos) {
-        detalhe += ' · ' + p.lancamentosFuturos + (p.lancamentosFuturos > 1 ? ' lançamentos' : ' lançamento') + ' a partir de hoje';
-      }
+      var setores = [p.setor].concat(p.setoresExtras || []).filter(Boolean).join(', ');
       return '<div class="linha-pessoa' + (p.ativo ? '' : ' inativa') + '">' +
         '<span class="texto"><strong>' + esc(p.nomeExibicao) + '</strong>' +
-        '<span class="nota">' + esc(p.email) + ' · ' + esc(detalhe) + '</span></span>' +
-        (p.email === d.meuEmail && p.ativo
-          ? '<span class="etiqueta suave">você</span>'
-          : '<button type="button" class="botao neutro pequeno" data-email="' + esc(p.email) + '" data-ativar="' + (p.ativo ? '0' : '1') + '">' +
-            (p.ativo ? 'Inativar' : 'Reativar') + '</button>') +
+        '<span class="nota">' + esc(p.email) + (setores ? ' · ' + esc(setores) : '') + '</span></span>' +
+        (p.perfil === 'Gestor' ? '<span class="etiqueta suave">Gestor</span>' : '') +
+        '<span class="acoes-pessoa">' +
+          '<button type="button" class="botao discreto pequeno" data-setores="' + esc(p.email) + '">Setores</button>' +
+          (p.email === d.meuEmail && p.ativo
+            ? '<span class="etiqueta suave">você</span>'
+            : '<button type="button" class="botao neutro pequeno" data-email="' + esc(p.email) + '" data-ativar="' + (p.ativo ? '0' : '1') + '">' +
+              (p.ativo ? 'Inativar' : 'Reativar') + '</button>') +
+        '</span>' +
         '</div>';
     };
 
     m.innerHTML =
       '<h2>Pessoas</h2>' +
       '<p class="nota">Quem sai da equipe é <strong>inativado</strong>, nunca apagado: as escalas antigas continuam com o nome.</p>' +
-      '<div class="confirmacao-embutida oculto" id="confirmaPessoa"></div>' +
+      '<div class="confirmacao-embutida oculto" id="painelPessoa"></div>' +
       '<div class="lista-pessoas">' + ativos.map(linha).join('') + '</div>' +
       (inativos.length ? '<h3 class="secao-config">Inativas</h3><div class="lista-pessoas">' + inativos.map(linha).join('') + '</div>' : '') +
       '<h3 class="secao-config">Adicionar pessoa</h3>' +
@@ -464,12 +465,19 @@
       }).catch(function (e) { botao.disabled = false; mostrarErro(e); });
     });
 
+    m.querySelectorAll('[data-setores]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var pessoa = d.pessoas.filter(function (x) { return x.email === b.dataset.setores; })[0];
+        editarSetores(m, d, pessoa);
+      });
+    });
+
     m.querySelectorAll('[data-email]').forEach(function (b) {
       b.addEventListener('click', function () {
         var ativar = b.dataset.ativar === '1';
         b.disabled = true;
         chamarComConfirmacao('definirPessoaAtiva', { email: b.dataset.email, ativo: ativar },
-          { painel: m.querySelector('#confirmaPessoa'),
+          { painel: m.querySelector('#painelPessoa'),
             titulo: ativar ? 'Reativar' : 'Inativar', textoBotao: ativar ? 'Reativar mesmo assim' : 'Inativar mesmo assim' })
           .then(function (r) {
             if (!r) { b.disabled = false; return; }
@@ -479,6 +487,59 @@
           })
           .catch(function (e) { b.disabled = false; mostrarErro(e); });
       });
+    });
+  }
+
+  /** Gestor: setor principal e setores extras de uma pessoa. */
+  function editarSetores(m, d, pessoa) {
+    var painel = m.querySelector('#painelPessoa');
+    var extras = pessoa.setoresExtras || [];
+    painel.classList.remove('oculto');
+    painel.innerHTML =
+      '<h2>Setores de ' + esc(pessoa.nomeExibicao) + '</h2>' +
+      '<label class="campo">Setor principal<select id="setorPrincipal">' +
+        d.setores.map(function (st) {
+          return '<option value="' + esc(st) + '"' + (st === pessoa.setor ? ' selected' : '') + '>' + esc(st) + '</option>';
+        }).join('') +
+      '</select><span class="nota">Usado na exibição e na fila do home office.</span></label>' +
+      '<div class="campo">Também cobre<div class="setores-extras">' +
+        d.setores.map(function (st) {
+          return '<label class="opcao-setor"><input type="checkbox" value="' + esc(st) + '"' +
+            (extras.indexOf(st) >= 0 ? ' checked' : '') + '>' + esc(st) + '</label>';
+        }).join('') +
+      '</div><span class="nota">No sábado, a pessoa cobre o setor principal e todos estes.</span></div>' +
+      '<div class="acoes"><button type="button" class="botao neutro" data-acao="cancelar">Cancelar</button>' +
+      '<button type="button" class="botao" data-acao="salvar">Salvar</button></div>';
+    painel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    var fechar = function () { painel.classList.add('oculto'); painel.innerHTML = ''; };
+    var selecionado = function () { return painel.querySelector('#setorPrincipal').value; };
+
+    // o setor principal não precisa aparecer marcado nos extras
+    var sincronizar = function () {
+      painel.querySelectorAll('.setores-extras input').forEach(function (c) {
+        var ehPrincipal = c.value === selecionado();
+        c.closest('.opcao-setor').classList.toggle('oculto', ehPrincipal);
+        if (ehPrincipal) c.checked = false;
+      });
+    };
+    painel.querySelector('#setorPrincipal').addEventListener('change', sincronizar);
+    sincronizar();
+
+    painel.querySelector('[data-acao="cancelar"]').addEventListener('click', fechar);
+    painel.querySelector('[data-acao="salvar"]').addEventListener('click', function () {
+      var botao = painel.querySelector('[data-acao="salvar"]');
+      botao.disabled = true;
+      var marcados = [];
+      painel.querySelectorAll('.setores-extras input:checked').forEach(function (c) { marcados.push(c.value); });
+      api('definirSetoresPessoa', { email: pessoa.email, setor: selecionado(), setoresExtras: marcados })
+        .then(function () {
+          fechar();
+          toast('Setores de ' + pessoa.nomeExibicao + ' atualizados.');
+          limparRespostasGuardadas();
+          return api('obterPessoas').then(function (novo) { desenharPessoas(m, novo); });
+        })
+        .catch(function (e) { botao.disabled = false; mostrarErro(e); });
     });
   }
 

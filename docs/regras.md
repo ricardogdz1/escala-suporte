@@ -5,13 +5,13 @@ Todas as regras abaixo geram **aviso**, nunca bloqueio. Os números ficam na aba
 ## Setores
 GERAL, CONTABILIDADE, EMISSÃO, SEMENTES, ATUALIZAÇÃO, AQILA, CADASTROS (hoje sem pessoas; o gestor pode desativar).
 - Cada colaborador tem **um setor principal** e zero ou mais **setores extras**.
-- O gestor muda setores direto na planilha (abas `Pessoas` e `Setores extras`).
+- O gestor muda setores pelo app (Configurações › Pessoas › Setores) ou direto na planilha (abas `Pessoas` e `Setores extras`).
 - Setor com `Ativo = Não` é ignorado em todas as regras.
 
 ## Perfis
 - **Colaborador:** lança e edita os próprios registros; propõe e aceita trocas.
 - **Gestor:** vê e edita tudo, aprova férias, vê o painel de pendências e recebe o resumo semanal. Pelo app também **cadastra e inativa pessoas** (Configurações › Pessoas), marca **sábado de treinamento**, marca **feriados** e edita as **regras da escala**.
-- **Cadastro de pessoas:** adicionar pede e-mail do domínio da `Config`, nome de exibição (sugerido pelo e-mail), setor principal, perfil e data de entrada. Ninguém é apagado — sai da equipe = `Ativo = Não`, para o histórico continuar legível. Inativar alguém com lançamentos futuros ou que seja o único gestor ativo gera aviso. Setores extras continuam na planilha.
+- **Cadastro de pessoas:** adicionar pede e-mail do domínio da `Config`, nome de exibição (sugerido pelo e-mail), setor principal, perfil e data de entrada. Ninguém é apagado — sai da equipe = `Ativo = Não`, para o histórico continuar legível. Inativar alguém com lançamentos futuros ou que seja o único gestor ativo gera aviso. O gestor também troca o **setor principal** e marca quantos **setores extras** quiser pela mesma janela (botão "Setores"); as abas `Pessoas` e `Setores extras` são atualizadas juntas.
 
 ## Sábado
 - Dois turnos: **8h às 11h** e **9h às 12h**.

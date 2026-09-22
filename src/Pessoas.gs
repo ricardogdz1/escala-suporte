@@ -178,3 +178,87 @@ function diagnosticoPessoas() {
     throw e;
   }
 }
+
+/**
+ * Troca o setor principal e os setores extras de uma pessoa (só gestor).
+ * Setor principal: um só, usado na fila e na exibição.
+ * Setores extras: quantos precisar — a pessoa cobre todos eles no sábado.
+ * @param {Object} dados {email, setor, setoresExtras: string[]}
+ */
+function definirSetoresPessoa(dados) {
+  var u = exigirGestor_();
+  dados = dados || {};
+  var email = normalizarEmail_(dados.email);
+  if (!email) throw new Error('Pessoa não informada.');
+
+  var ativos = listarSetoresAtivos_();
+  var setor = String(dados.setor || '').trim();
+  if (!setor) throw new Error('Escolha o setor principal.');
+  if (ativos.indexOf(setor) < 0) throw new Error('Setor desconhecido: ' + setor + '.');
+
+  var vistos = {};
+  vistos[setor] = true; // o principal não se repete nos extras
+  var extras = (dados.setoresExtras || []).map(function (s) { return String(s || '').trim(); })
+    .filter(function (s) {
+      if (!s || vistos[s]) return false;
+      if (ativos.indexOf(s) < 0) throw new Error('Setor desconhecido: ' + s + '.');
+      vistos[s] = true;
+      return true;
+    });
+
+  var linhaPessoa = lerAba_(ABA_PESSOAS).filter(function (l) {
+    return normalizarEmail_(l['E-mail corporativo']) === email;
+  })[0];
+  if (!linhaPessoa) throw new Error('Pessoa não encontrada no cadastro.');
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    atualizarLinha_(ABA_PESSOAS, linhaPessoa._linha, { 'Setor principal': setor });
+    gravarSetoresExtras_(email, extras);
+  } finally {
+    lock.releaseLock();
+  }
+  limparCacheCadastro();
+  registrarNotificacao_('CADASTRO', 'definirSetoresPessoa', '', '',
+    email + ': ' + setor + (extras.length ? ' + ' + extras.join(', ') : ''), 'salvo por ' + u.email);
+  return { ok: true, setor: setor, setoresExtras: extras };
+}
+
+/**
+ * Regrava as linhas da pessoa na aba "Setores extras".
+ * Escreve só as colunas de dados e reaproveita as linhas livres já formatadas,
+ * para não atropelar a coluna de fórmula (Nome automático).
+ */
+function gravarSetoresExtras_(email, extras) {
+  var aba = aba_(ABA_SETORES_EXTRAS);
+  var cabecalho = cabecalhoDaAba_(aba);
+  var colEmail = cabecalho.indexOf('E-mail corporativo') + 1;
+  var colSetor = cabecalho.indexOf('Setor extra') + 1;
+  if (!colEmail || !colSetor) throw new Error('A aba "' + ABA_SETORES_EXTRAS + '" está sem as colunas esperadas.');
+
+  var ultima = aba.getLastRow();
+  var emails = ultima >= 2 ? aba.getRange(2, colEmail, ultima - 1, 1).getValues() : [];
+
+  var livres = [];   // linhas em branco que já existem (mantêm a fórmula do nome)
+  var daPessoa = []; // linhas que já são dela
+  emails.forEach(function (v, i) {
+    var atual = normalizarEmail_(v[0]);
+    if (atual === email) daPessoa.push(i + 2);
+    else if (!atual) livres.push(i + 2);
+  });
+
+  // reaproveita as linhas dela, depois as livres, e só então cresce a aba
+  var destino = daPessoa.concat(livres);
+  extras.forEach(function (setor, i) {
+    var linha = destino[i] || (aba.getLastRow() + 1);
+    aba.getRange(linha, colEmail).setValue(email);
+    aba.getRange(linha, colSetor).setValue(setor);
+  });
+  // limpa o que sobrou das linhas antigas dela
+  daPessoa.slice(extras.length).forEach(function (linha) {
+    aba.getRange(linha, colEmail).clearContent();
+    aba.getRange(linha, colSetor).clearContent();
+  });
+  esquecerAba_(ABA_SETORES_EXTRAS);
+}

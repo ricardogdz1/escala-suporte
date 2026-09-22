@@ -272,6 +272,15 @@
   .linha-pessoa .texto { min-width: 0; }
   .linha-pessoa .texto strong { display: block; }
   .linha-pessoa .nota { display: block; font-size: 13px; overflow-wrap: anywhere; }
+  .linha-pessoa .acoes-pessoa { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+  .setores-extras { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .opcao-setor {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 4px 12px;
+    border: 1px solid var(--borda); border-radius: 999px; background: #fff;
+    font-weight: 400; font-size: 14px; cursor: pointer;
+  }
+  .opcao-setor:has(input:checked) { background: var(--verde-claro); border-color: var(--verde); color: var(--verde); }
+  .opcao-setor input { width: 18px; height: 18px; accent-color: var(--verde); }
   .opcao { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--borda); cursor: pointer; }
   .opcao:last-of-type { border-bottom: 0; }
   .opcao input { width: 22px; height: 22px; margin: 2px 0 0; flex: 0 0 auto; accent-color: var(--verde); }
