@@ -40,6 +40,14 @@ Pedido do usuário (22/09/2026). Três mudanças no cliente:
 - **Pré-carga em segundo plano:** 1,5 s depois de a primeira tela aparecer, as demais são buscadas uma de cada vez (cada tela declara `precarregar`). Sequencial de propósito: o Apps Script enfileira chamadas do mesmo usuário, e disparar tudo junto atrasaria a tela que a pessoa está olhando. Trocar de aba passa a ser instantâneo.
 - **Barra fina no topo** enquanto o servidor responde, com progresso real durante a pré-carga. Preferida a uma tela de espera bloqueante: mostra atividade sem impedir o uso.
 
+## Desempenho: o que foi feito e por quê
+Base: guias oficiais de boas práticas do Apps Script e do HTML Service.
+- **Ler a planilha é a parte cara.** Cada aba é lida uma vez por execução (`abasLidas_`) e as abas grandes ficam no `CacheService` por 10 min (`ABAS_COM_CACHE`), divididas em pedaços porque o limite é 100 KB por chave. Gravações e edições manuais (`onEdit`) derrubam o cache da aba.
+- **Menos idas ao servidor:** cache de respostas no cliente com invalidação seletiva, pré-carga das telas em segundo plano e gravação que já devolve a tela atualizada.
+- **Tarefas lentas fora do caminho:** agenda e e-mails por fila (abaixo).
+- **`/dev` é mais lento que `/exec`** por natureza: em desenvolvimento o Apps Script faz registro e validação extras. Medir sempre no link de produção.
+- `medirDesempenho()` (no editor) mostra o tempo de cada tela com e sem cache.
+
 ## Agenda e e-mails saem por uma fila
 Pedido do usuário (22/09/2026), por causa do tempo de espera ao confirmar um lançamento. Criar um evento custa de 0,3 a 0,8 s e um e-mail outro tanto; escalar cinco pessoas deixava a pessoa esperando vários segundos. Agora a gravação na planilha responde de imediato e as tarefas lentas vão para a aba `FilaTarefas`, processada por um gatilho poucos segundos depois (`Fila.gs`). Consequência aceita: o evento aparece na agenda com alguns segundos de atraso. Se o gatilho falhar, a tarefa é repetida até três vezes e sobra registrada na aba — `processarFilaAgora()` força o processamento.
 

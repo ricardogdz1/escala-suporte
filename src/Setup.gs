@@ -176,6 +176,34 @@ function corrigirTurnos() {
   Logger.log('Turnos corrigidos: ' + corrigidos + ' de ' + valores.length + ' linhas.');
 }
 
+/**
+ * Mede quanto cada tela custa no servidor (rodar no editor).
+ * A primeira passada enche o cache das abas; a segunda mostra o ganho.
+ */
+function medirDesempenho() {
+  var medir = function (nome, fn) {
+    var t = new Date().getTime();
+    fn();
+    return nome + ': ' + (new Date().getTime() - t) + ' ms';
+  };
+  var rodada = function (titulo) {
+    var linhas = [titulo];
+    linhas.push(medir('obterPainel', function () { obterPainel('semana'); }));
+    linhas.push(medir('obterSabados', function () { obterSabados(''); }));
+    linhas.push(medir('obterMeioDia', function () { obterMeioDia(''); }));
+    linhas.push(medir('obterPlantao', function () { obterPlantao(''); }));
+    linhas.push(medir('obterHomeOffice', function () { obterHomeOffice(''); }));
+    linhas.push(medir('obterFerias', function () { obterFerias(''); }));
+    return linhas.join('\n');
+  };
+  limparCaches();
+  var frio = rodada('--- Sem cache (primeira leitura da planilha)');
+  limparCaches();
+  obterPainel('semana');              // enche o cache
+  var quente = rodada('--- Com o cache das abas quente');
+  Logger.log(frio + '\n\n' + quente);
+}
+
 /** Menu na planilha para o gestor. */
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -192,6 +220,9 @@ function onOpen() {
  */
 function onEdit(e) {
   var nome = e && e.range && e.range.getSheet().getName();
+  if (!nome) return;
   if (nome === ABA_CONFIG) limparCacheConfig();
   else if (nome === ABA_PESSOAS || nome === ABA_SETORES || nome === ABA_SETORES_EXTRAS) limparCacheCadastro();
+  // mexeu na aba à mão: o app não pode continuar servindo a versão guardada
+  esquecerAba_(nome);
 }

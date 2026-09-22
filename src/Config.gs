@@ -68,6 +68,7 @@ function limparCacheConfig() {
 function limparCaches() {
   limparCacheConfig();
   limparCacheCadastro();
+  ABAS_COM_CACHE.forEach(esquecerAba_);
 }
 
 // ---------- Regras editáveis pelo gestor (janela "Regras da escala") ----------

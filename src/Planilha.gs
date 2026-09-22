@@ -24,8 +24,84 @@ function aba_(nome) {
  */
 var abasLidas_ = {};
 
+/**
+ * Além da memória da execução, as abas grandes ficam no CacheService entre execuções:
+ * ler a planilha é a parte mais cara de cada chamada, e essas abas mudam pouco.
+ * Qualquer gravação (ou edição manual, pelo onEdit) derruba o cache da aba.
+ */
+var ABAS_COM_CACHE = [ABA_LANCAMENTOS, ABA_BLOQUEIOS, ABA_PREFERENCIAS, ABA_SALDO_FERIAS, ABA_TROCAS, ABA_FILA_HO];
+var CACHE_ABA_SEGUNDOS = 600;      // máximo do CacheService
+var CACHE_PEDACO = 90000;          // o limite é 100 KB por chave
+var CACHE_MAX_PEDACOS = 8;
+
+function chaveCacheAba_(nome) { return 'aba_v1_' + nome; }
+
 function esquecerAba_(nome) {
   delete abasLidas_[nome];
+  if (ABAS_COM_CACHE.indexOf(nome) < 0) return;
+  try {
+    var chave = chaveCacheAba_(nome);
+    var cache = CacheService.getScriptCache();
+    var chaves = [chave + '_n'];
+    for (var i = 0; i < CACHE_MAX_PEDACOS; i++) chaves.push(chave + '_' + i);
+    cache.removeAll(chaves);
+  } catch (e) {
+    // cache é só aceleração; se falhar, a próxima leitura vai à planilha
+  }
+}
+
+/**
+ * JSON que preserva as datas: sem isso, um Date volta do cache como texto e
+ * quebra quem faz `valor instanceof Date`.
+ */
+function abaParaTexto_(registros) {
+  return JSON.stringify(registros, function (chave, valor) {
+    var original = this[chave];
+    return original instanceof Date ? { __data: original.getTime() } : valor;
+  });
+}
+
+function abaDeTexto_(texto) {
+  return JSON.parse(texto, function (chave, valor) {
+    return valor && typeof valor === 'object' && valor.__data !== undefined ? new Date(valor.__data) : valor;
+  });
+}
+
+function lerAbaDoCache_(nome) {
+  if (ABAS_COM_CACHE.indexOf(nome) < 0) return null;
+  try {
+    var chave = chaveCacheAba_(nome);
+    var cache = CacheService.getScriptCache();
+    var quantos = Number(cache.get(chave + '_n'));
+    if (!quantos) return null;
+    var chaves = [];
+    for (var i = 0; i < quantos; i++) chaves.push(chave + '_' + i);
+    var partes = cache.getAll(chaves);
+    var texto = '';
+    for (var j = 0; j < chaves.length; j++) {
+      if (partes[chaves[j]] === undefined) return null;   // um pedaço expirou: lê da planilha
+      texto += partes[chaves[j]];
+    }
+    return abaDeTexto_(texto);
+  } catch (e) {
+    return null;
+  }
+}
+
+function guardarAbaNoCache_(nome, registros) {
+  if (ABAS_COM_CACHE.indexOf(nome) < 0) return;
+  try {
+    var texto = abaParaTexto_(registros);
+    var quantos = Math.ceil(texto.length / CACHE_PEDACO);
+    if (quantos > CACHE_MAX_PEDACOS) return;   // grande demais: não compensa
+    var chave = chaveCacheAba_(nome);
+    var mapa = {};
+    for (var i = 0; i < quantos; i++) mapa[chave + '_' + i] = texto.substr(i * CACHE_PEDACO, CACHE_PEDACO);
+    mapa[chave + '_n'] = String(quantos);
+    CacheService.getScriptCache().putAll(mapa, CACHE_ABA_SEGUNDOS);
+  } catch (e) {
+    // idem: cache é opcional
+  }
 }
 
 /**
@@ -35,7 +111,11 @@ function esquecerAba_(nome) {
  */
 function lerAba_(nome) {
   if (abasLidas_[nome]) return abasLidas_[nome];
-  var registros = lerAbaDaPlanilha_(nome);
+  var registros = lerAbaDoCache_(nome);
+  if (!registros) {
+    registros = lerAbaDaPlanilha_(nome);
+    guardarAbaNoCache_(nome, registros);
+  }
   abasLidas_[nome] = registros;
   return registros;
 }

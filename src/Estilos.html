@@ -315,16 +315,6 @@
   .aviso-do-dia .lista-avisos .aviso { background: #fff; }
 
   /* ---------- Carregando / mensagens ---------- */
-  /* barra fina no topo: mostra que o servidor está respondendo sem travar a tela */
-  .barra-carregando {
-    position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 200;
-    opacity: 0; transition: opacity 0.2s; pointer-events: none;
-  }
-  .barra-carregando.ativa { opacity: 1; }
-  .barra-carregando span {
-    display: block; height: 100%; width: 0; background: var(--verde);
-    transition: width 0.15s linear;
-  }
   .carregando { color: var(--texto-suave); padding: 30px 0; text-align: center; }
   .toast {
     position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
