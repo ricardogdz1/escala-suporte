@@ -380,7 +380,21 @@
   /** Gestor: adicionar pessoas e inativar/reativar. Ninguém é apagado: o histórico fica. */
   function janelaPessoas() {
     var m = abrirModal('<h2>Pessoas</h2><div class="carregando">Carregando…</div>');
-    api('obterPessoas').then(function (d) { desenharPessoas(m, d); }).catch(function (e) { fecharModal(); mostrarErro(e); });
+    // aviso se o servidor não responder: sem isso a janela fica em "Carregando…" sem explicação
+    var demorou = setTimeout(function () {
+      var c = m.querySelector('.carregando');
+      if (c) c.textContent = 'O servidor está demorando… Se não carregar, recarregue a página (F5).';
+    }, 12000);
+    api('obterPessoas')
+      .then(function (d) { clearTimeout(demorou); desenharPessoas(m, d); })
+      .catch(function (e) {
+        clearTimeout(demorou);
+        var msg = (e && e.message ? e.message : String(e)).replace(/^Error:\s*/, '');
+        m.innerHTML = '<h2>Pessoas</h2>' + htmlAviso({ titulo: 'Não foi possível abrir a lista', texto: msg }) +
+          '<div class="acoes"><button type="button" class="botao neutro" data-acao="fechar">Fechar</button></div>';
+        m.querySelector('[data-acao="fechar"]').addEventListener('click', fecharModal);
+        console.error(e);
+      });
   }
 
   function desenharPessoas(m, d) {

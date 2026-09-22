@@ -143,3 +143,38 @@ function definirPessoaAtiva(dados, confirmado) {
   registrarNotificacao_('CADASTRO', 'definirPessoaAtiva', '', '', email, (ativo ? 'reativada' : 'inativada') + ' por ' + u.email);
   return { ok: true, ativo: ativo };
 }
+
+/**
+ * Diagnóstico (rodar no editor): mostra em qual etapa obterPessoas falha ou demora.
+ * Útil quando a janela "Pessoas" não carrega no app.
+ */
+function diagnosticoPessoas() {
+  var etapas = [];
+  var marcar = function (nome, fn) {
+    var t = new Date().getTime();
+    var r = fn();
+    etapas.push(nome + ': ' + (new Date().getTime() - t) + ' ms' + (r === undefined ? '' : ' → ' + r));
+    return r;
+  };
+  try {
+    marcar('usuário', function () {
+      var u = obterUsuarioAtual();
+      return u.email + ' (gestor: ' + u.gestor + ')';
+    });
+    marcar('pessoas no cadastro', function () { return listarPessoas_().length; });
+    marcar('setores ativos', function () { return listarSetoresAtivos_().join(', '); });
+    marcar('lançamentos de hoje em diante', function () { return listarLancamentos_({ de: hoje_() }).length; });
+    var dados = marcar('obterPessoas()', function () {
+      var d = obterPessoas();
+      return d.pessoas.length + ' pessoas, ' + d.setores.length + ' setores';
+    });
+    marcar('resposta serializável', function () {
+      return JSON.stringify(obterPessoas()).length + ' caracteres';
+    });
+    Logger.log('OK\n' + etapas.join('\n'));
+  } catch (e) {
+    Logger.log('FALHOU em: ' + (etapas.length ? etapas[etapas.length - 1] : 'primeira etapa') +
+      '\n' + etapas.join('\n') + '\nERRO: ' + e.message + '\n' + (e.stack || ''));
+    throw e;
+  }
+}

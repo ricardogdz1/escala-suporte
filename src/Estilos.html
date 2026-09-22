@@ -291,11 +291,26 @@
   .modal-fundo {
     position: fixed; inset: 0; background: rgba(31, 43, 35, 0.5); z-index: 50;
     display: flex; align-items: center; justify-content: center; padding: 16px;
+    overflow-y: auto;
   }
+  /* janelas longas (Pessoas, Configurações) rolam por dentro em vez de passar da tela */
   .modal {
     background: #fff; border-radius: 14px; padding: 24px; width: 100%; max-width: 520px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .modal h2 { margin-bottom: 12px; }
   .acoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  /* só os botões finais da janela acompanham a rolagem (grupos de botões no meio ficam parados) */
+  .modal > .acoes:last-child {
+    position: sticky; bottom: -24px; margin-bottom: -24px; padding: 14px 0;
+    background: #fff; border-top: 1px solid var(--borda);
+  }
+  @media (max-width: 600px) {
+    .modal { padding: 20px 16px; border-radius: 12px; }
+    .modal > .acoes:last-child { bottom: -20px; margin-bottom: -20px; }
+  }
 </style>
