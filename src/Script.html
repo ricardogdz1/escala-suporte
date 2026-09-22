@@ -281,11 +281,10 @@
       m.innerHTML =
         '<h2>Configurações</h2>' +
         '<h3 class="secao-config">Notificações</h3>' +
-        '<p class="nota">Seus lançamentos continuam valendo do mesmo jeito; isso só muda o que você recebe.</p>' +
         '<label class="opcao"><input type="checkbox" id="prefEmails"' + (p.emails ? ' checked' : '') + '>' +
           '<span class="texto"><strong>Receber e-mails</strong><span>Confirmações, trocas propostas e decisões sobre férias.</span></span></label>' +
         '<label class="opcao"><input type="checkbox" id="prefAgenda"' + (p.agenda ? ' checked' : '') + '>' +
-          '<span class="texto"><strong>Eventos na Google Agenda</strong><span>Sábados, plantões, meio-dia, home office e férias entram na sua agenda como compromissos confirmados, sem convite.</span></span></label>' +
+          '<span class="texto"><strong>Eventos na Google Agenda</strong><span>Sábados, plantões, meio-dia, home office e férias entram na sua agenda como compromissos confirmados.</span></span></label>' +
         '<h3 class="secao-config">Avisos no Painel</h3>' +
         '<p class="nota">Escolha quais pendências aparecem para você no Painel.</p>' +
         GRUPOS_CONFIG.map(function (g) {
