@@ -260,12 +260,47 @@
     });
   };
 
+  /** Junta os avisos pelo dia que cada um traz; sem dia, fica um grupo só, sem cabeçalho. */
+  function avisosPorDia(avisos) {
+    var ordem = [], porChave = {};
+    avisos.forEach(function (a) {
+      var chave = a.rotuloDia || '';
+      if (!porChave[chave]) { porChave[chave] = { rotulo: chave, itens: [] }; ordem.push(porChave[chave]); }
+      porChave[chave].itens.push(a);
+    });
+    return ordem;
+  }
+
   window.confirmarAvisos = function (avisos, opcoes) {
     opcoes = opcoes || {};
+    var grupos = avisosPorDia(avisos);
+    var comDia = grupos.length > 1 || (grupos[0] && grupos[0].rotulo);
+
+    // muitos avisos empurravam os botões para fora da tela: por dia e recolhidos,
+    // a janela cabe e o usuário abre só o dia que quiser conferir
+    var corpo = comDia
+      ? '<p class="nota" style="margin-top:10px">' +
+          esc(avisos.length + (avisos.length > 1 ? ' avisos' : ' aviso') + ' em ' +
+              grupos.length + (grupos.length > 1 ? ' dias' : ' dia') + '. Toque num dia para ver.') + '</p>' +
+        '<div class="grupos-avisos-dia">' +
+          grupos.map(function (g, i) {
+            return '<div class="recolhivel aviso-do-dia" data-grupo="' + i + '">' +
+              '<button type="button" class="cabecalho-recolhivel" aria-expanded="false">' +
+                '<span class="texto"><strong>' + esc(g.rotulo || 'Outros avisos') + '</strong></span>' +
+                '<span class="etiqueta ambar pilula">' + g.itens.length + '</span>' +
+                '<span class="seta" aria-hidden="true">▾</span>' +
+              '</button>' +
+              '<div class="corpo-recolhivel"><div class="lista-avisos">' +
+                g.itens.map(htmlAviso).join('') +
+              '</div></div></div>';
+          }).join('') +
+        '</div>'
+      : '<div class="lista-avisos" style="margin-top:12px">' + avisos.map(htmlAviso).join('') + '</div>';
+
     var html =
       '<h2>' + esc(opcoes.titulo || 'Atenção') + '</h2>' +
       (opcoes.subtitulo ? '<p class="nota" style="margin-top:-6px">' + esc(opcoes.subtitulo) + '</p>' : '') +
-      '<div class="lista-avisos" style="margin-top:12px">' + avisos.map(htmlAviso).join('') + '</div>' +
+      corpo +
       '<p class="nota" style="margin-top:12px">Avisos não impedem lançamentos. Se salvar, fica registrado que você viu este aviso.</p>' +
       '<div class="acoes">' +
         '<button type="button" class="botao neutro" data-acao="cancelar">Cancelar</button>' +
@@ -284,6 +319,13 @@
         alvo = abrirModal(html);
         fechar = fecharModal;
       }
+      alvo.querySelectorAll('.aviso-do-dia').forEach(function (grupo) {
+        var botao = grupo.querySelector('.cabecalho-recolhivel');
+        botao.addEventListener('click', function () {
+          var aberto = grupo.classList.toggle('aberto');
+          botao.setAttribute('aria-expanded', String(aberto));
+        });
+      });
       alvo.querySelector('[data-acao="cancelar"]').addEventListener('click', function () { fechar(); resolver(false); });
       alvo.querySelector('[data-acao="salvar"]').addEventListener('click', function () { fechar(); resolver(true); });
       alvo.querySelector('[data-acao="cancelar"]').focus();

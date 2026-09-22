@@ -315,22 +315,22 @@ function avisosDeEscalarSemanal_(e, simulados, r, c, u, pessoas) {
   var treinamento = bloqueios.filter(function (b) { return b.tipo === BLOQUEIO.TREINAMENTO; });
 
   if (feriado) {
-    avisos.push(aviso_(c.tipo + '_FERIADO', dataBr + ' é feriado', 'Normalmente não há ' + r.nome.toLowerCase() + ' em feriado.'));
+    avisos.push(aviso_(c.tipo + '_FERIADO', 'É feriado', 'Normalmente não há ' + r.nome.toLowerCase() + ' em feriado.', dia));
   }
   if (treinamento.length) {
-    avisos.push(aviso_(c.tipo + '_TREINAMENTO', dataBr + ' tem treinamento da equipe', treinamento.map(tituloBloqueio_).join('; ') + '. Escalas neste dia geram aviso.'));
+    avisos.push(aviso_(c.tipo + '_TREINAMENTO', 'Treinamento da equipe', treinamento.map(tituloBloqueio_).join('; ') + '. Escalas neste dia geram aviso.', dia));
   }
   if (e.data.getTime() < c.hoje.getTime()) {
-    avisos.push(aviso_(c.tipo + '_PASSADO', dataBr + ' já passou', 'O lançamento vale como registro do que aconteceu.'));
+    avisos.push(aviso_(c.tipo + '_PASSADO', 'Esse dia já passou', 'O lançamento vale como registro do que aconteceu.', dia));
   }
   if (estaDeFerias_(c.lancamentos, e.email, e.data)) {
-    avisos.push(aviso_(c.tipo + '_FERIAS', nomeAlvo + ' está de férias em ' + dataBr, 'Há férias aprovadas cobrindo esse dia.'));
+    avisos.push(aviso_(c.tipo + '_FERIAS', nomeAlvo + ' está de férias', 'Há férias aprovadas cobrindo esse dia.', dia));
   }
   var vagas = r.vagas(e.data, c);
   var depois = escaladosNoDia_(simulados, c.tipo, e.data).length + 1;
   if (depois > vagas) {
-    avisos.push(aviso_(c.tipo + '_ACIMA_VAGAS', r.nome + ' de ' + dataBr + ' passa das vagas',
-      'São ' + vagas + ' vaga' + (vagas === 1 ? '' : 's') + '. Com ' + (e.email === u.email ? 'você' : nomeAlvo) + ', ficam ' + depois + ' pessoas.'));
+    avisos.push(aviso_(c.tipo + '_ACIMA_VAGAS', 'Passa das vagas',
+      'São ' + vagas + ' vaga' + (vagas === 1 ? '' : 's') + '. Com ' + (e.email === u.email ? 'você' : nomeAlvo) + ', ficam ' + depois + ' pessoas.', dia));
   }
   return avisos;
 }
@@ -340,13 +340,13 @@ function avisosDeTirarSemanal_(lanc, simulados, r, c, u) {
   var dataBr = formatarDataBr_(lanc.inicio).substring(0, 5);
   var quem = lanc.email === u.email ? 'você' : nomeDe_(c.pessoas, lanc.email);
   if (lanc.inicio.getTime() < c.hoje.getTime()) {
-    avisos.push(aviso_(c.tipo + '_PASSADO', dataBr + ' já passou', 'Cancelar altera o registro do que aconteceu.'));
+    avisos.push(aviso_(c.tipo + '_PASSADO', 'Esse dia já passou', 'Cancelar altera o registro do que aconteceu.', dia));
   }
   var restantes = escaladosNoDia_(simulados, c.tipo, lanc.inicio).length;
   var vagas = r.vagas(lanc.inicio, c);
   if (r.aplica(lanc.inicio, bloqueiosDoDia_(c.bloqueios, lanc.inicio).some(ehTipoFeriado_)) && restantes < vagas) {
-    avisos.push(aviso_(c.tipo + '_ABAIXO_VAGAS', r.nome + ' de ' + dataBr + ' fica com vaga aberta',
-      'Sem ' + quem + ' ficam ' + restantes + ' de ' + vagas + ' vaga' + (vagas === 1 ? '' : 's') + '.'));
+    avisos.push(aviso_(c.tipo + '_ABAIXO_VAGAS', 'Fica com vaga aberta',
+      'Sem ' + quem + ' ficam ' + restantes + ' de ' + vagas + ' vaga' + (vagas === 1 ? '' : 's') + '.', dia));
   }
   return avisos;
 }

@@ -10,8 +10,8 @@
  */
 
 /** Aviso com título curto (negrito na tela) e explicação. */
-function aviso_(codigo, titulo, texto) {
-  return { codigo: codigo, titulo: titulo, texto: texto || '' };
+function aviso_(codigo, titulo, texto, rotuloDia) {
+  return { codigo: codigo, titulo: titulo, texto: texto || '', rotuloDia: rotuloDia || '' };
 }
 
 /** Resposta padrão quando há avisos e o usuário ainda não confirmou. */
@@ -25,7 +25,7 @@ function registrarAvisosIgnorados_(usuario, idLancamento, avisos) {
   var aba = aba_(ABA_AVISOS_IGNORADOS);
   var agora = new Date();
   var linhas = avisos.map(function (a) {
-    return [agora, usuario.email, idLancamento || '', a.codigo, a.titulo + (a.texto ? ' — ' + a.texto : '')];
+    return [agora, usuario.email, idLancamento || '', a.codigo, (a.rotuloDia ? a.rotuloDia + ': ' : '') + a.titulo + (a.texto ? ' — ' + a.texto : '')];
   });
   aba.getRange(aba.getLastRow() + 1, 1, linhas.length, 5).setValues(linhas);
 }

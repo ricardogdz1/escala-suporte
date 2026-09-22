@@ -247,7 +247,7 @@ function salvarHomeOfficeImpl_(dados, confirmado) {
   cancelar.forEach(function (l) {
     var dataBr = tituloSemanaHO_(l.inicio, adicionarDias_(l.inicio, 4));
     if (l.inicio.getTime() < inicioDaSemana_(c.hoje).getTime()) {
-      avisosCancelar.push(aviso_('HO_PASSADO', 'Semana ' + dataBr + ' já passou', 'Cancelar altera o registro do que aconteceu.'));
+      avisosCancelar.push(aviso_('HO_PASSADO', 'Essa semana já passou', 'Cancelar altera o registro do que aconteceu.', 'Semana de ' + dataBr));
     }
   });
 
@@ -264,17 +264,17 @@ function salvarHomeOfficeImpl_(dados, confirmado) {
       var quem = naSemana.map(function (x) {
         return nomeDe_(c.pessoas, x.email) + (x.criadoEm ? ', reservada em ' + formatarDataHoraBr_(x.criadoEm).replace(' ', ' às ') : '');
       }).join('; ');
-      avisosReservar.push(aviso_('HO_SEMANA_OCUPADA', 'Semana ' + dataBr + ' já está reservada', 'Esta semana já é de ' + quem + '. São ' + c.vagas + ' vaga' + (c.vagas === 1 ? '' : 's') + ' por semana na equipe.'));
+      avisosReservar.push(aviso_('HO_SEMANA_OCUPADA', 'Semana já reservada', 'Esta semana já é de ' + quem + '. São ' + c.vagas + ' vaga' + (c.vagas === 1 ? '' : 's') + ' por semana na equipe.', 'Semana de ' + dataBr));
     }
     var presencial = presencialNaSemana_(c.bloqueios, seg, sex);
     if (presencial.length) {
-      avisosReservar.push(aviso_('HO_PRESENCIAL', 'Semana ' + dataBr + ' é presencial', (presencial[0].descricao || 'Definida pelo gestor') + '. Reservar gera aviso.'));
+      avisosReservar.push(aviso_('HO_PRESENCIAL', 'Semana presencial', (presencial[0].descricao || 'Definida pelo gestor') + '. Reservar gera aviso.', 'Semana de ' + dataBr));
     }
     if (seg.getTime() < inicioDaSemana_(c.hoje).getTime()) {
-      avisosReservar.push(aviso_('HO_PASSADO', 'Semana ' + dataBr + ' já passou', 'O lançamento vale como registro do que aconteceu.'));
+      avisosReservar.push(aviso_('HO_PASSADO', 'Essa semana já passou', 'O lançamento vale como registro do que aconteceu.', 'Semana de ' + dataBr));
     }
     if (estaDeFerias_(c.ferias, e.email, seg, sex)) {
-      avisosReservar.push(aviso_('HO_FERIAS', nomeAlvo + ' está de férias nessa semana', 'Há férias aprovadas cobrindo ' + dataBr + '.'));
+      avisosReservar.push(aviso_('HO_FERIAS', nomeAlvo + ' está de férias', 'Há férias aprovadas cobrindo essa semana.', 'Semana de ' + dataBr));
     }
     var faltam = quemFaltaUsar_(e.email, seg, c, simuladas, c.pulos);
     if (faltam.length) {

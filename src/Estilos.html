@@ -287,6 +287,33 @@
   .opcao .texto strong { display: block; }
   .opcao .texto span { color: var(--texto-suave); font-size: 13.5px; }
 
+  /* ---------- Blocos recolhíveis (pendências de férias, avisos por dia) ---------- */
+  .recolhivel { padding: 0; }
+  .cabecalho-recolhivel {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 16px 20px;
+    background: none; border: 0; text-align: left; font: inherit; color: inherit; border-radius: var(--raio);
+  }
+  .cabecalho-recolhivel:hover { background: #FAFAF6; }
+  .cabecalho-recolhivel .texto { flex: 1 1 auto; min-width: 0; }
+  .cabecalho-recolhivel h3 { margin: 0; }
+  .cabecalho-recolhivel .nota { display: block; font-size: 13.5px; }
+  .cabecalho-recolhivel .seta { flex: 0 0 auto; font-size: 14px; transition: transform 0.15s; }
+  .recolhivel.aberto .cabecalho-recolhivel .seta { transform: rotate(180deg); }
+  .corpo-recolhivel { display: none; padding: 0 20px 18px; }
+  .recolhivel.aberto .corpo-recolhivel { display: block; }
+
+  /* avisos da confirmação: um bloco por dia, fechados, com rolagem se forem muitos */
+  .grupos-avisos-dia {
+    display: flex; flex-direction: column; gap: 8px; margin-top: 12px;
+    max-height: 46vh; overflow-y: auto; overscroll-behavior: contain;
+  }
+  .aviso-do-dia { background: var(--ambar-claro); border: 1px solid var(--ambar-borda); border-radius: 10px; }
+  .aviso-do-dia .cabecalho-recolhivel { padding: 10px 14px; color: var(--ambar); }
+  .aviso-do-dia .cabecalho-recolhivel:hover { background: #F7E4C3; }
+  .aviso-do-dia .cabecalho-recolhivel::before { content: "⚠"; font-size: 16px; flex: 0 0 auto; }
+  .aviso-do-dia .corpo-recolhivel { padding: 0 14px 12px; }
+  .aviso-do-dia .lista-avisos .aviso { background: #fff; }
+
   /* ---------- Carregando / mensagens ---------- */
   /* barra fina no topo: mostra que o servidor está respondendo sem travar a tela */
   .barra-carregando {
