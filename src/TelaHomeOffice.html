@@ -74,6 +74,7 @@
   TELAS.homeoffice = {
     titulo: 'Home office',
     descricao: 'Uma pessoa da equipe por semana, de segunda a sexta.',
+    precarregar: function () { return ['obterHomeOffice', [segundaDe(hojeIso())]]; },
     carregar: function (corpo, acoes) {
       var p = TELAS.homeoffice.parametros;
       var atual = segundaDe(hojeIso());

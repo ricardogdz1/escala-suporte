@@ -82,6 +82,7 @@
   TELAS.ferias = {
     titulo: 'Férias',
     descricao: '',
+    precarregar: function () { return ['obterFerias', ['']]; },
     carregar: function (corpo, acoes) {
       estado.mes = '';
       estado.editando = null;

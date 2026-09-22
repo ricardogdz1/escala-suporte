@@ -57,6 +57,7 @@
   TELAS.painel = {
     titulo: '',
     sobrelinha: '',
+    precarregar: function () { return ['obterPainel', [estado.modo]]; },
     carregar: function (corpo, acoes) {
       acoes.innerHTML =
         '<div class="alternador" role="group" aria-label="Período">' +
@@ -141,7 +142,6 @@
           }).then(function (r) {
             if (!r) { item.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); return; }
             toast(aceitar ? 'Troca aceita. Escala e agenda atualizadas.' : 'Troca recusada.');
-            limparRespostasGuardadas();
             recarregarTela();
           }).catch(function (e) { item.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); mostrarErro(e); });
         };

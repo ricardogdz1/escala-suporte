@@ -87,6 +87,7 @@
     TELAS[cfg.nome] = {
       titulo: cfg.titulo,
       descricao: cfg.descricao,
+      precarregar: function () { return [cfg.funcaoObter, [segundaDe(hojeIso())]]; },
       carregar: function (corpo, acoes) {
         var p = TELAS[cfg.nome].parametros;
         var atual = segundaDe(hojeIso());
@@ -417,7 +418,6 @@
           .then(function () {
             fecharModal();
             toast(escolhido ? 'Feriado salvo.' : 'Feriado removido.');
-            limparRespostasGuardadas();
             carregar(ctx.corpo, ctx.acoes);
           })
           .catch(function (e) { fecharModal(); mostrarErro(e); });

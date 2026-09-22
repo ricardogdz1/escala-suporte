@@ -10,17 +10,71 @@
   var conteudo = document.getElementById('conteudo');
 
   // ---------- Chamada ao servidor ----------
-  /** Últimas respostas de leitura, por função+argumentos. Qualquer gravação limpa tudo. */
+  /** Últimas respostas de leitura, por função+argumentos. */
   var respostasGuardadas = {};
-  function ehLeitura(funcao) { return /^(obter|contar|listar)/.test(funcao); }
+  function ehLeitura(funcao) { return /^(obter|contar|listar|previa)/.test(funcao); }
+
+  /**
+   * O que cada gravação torna velho. Só essas leituras são descartadas, para as
+   * outras telas continuarem instantâneas. Gravação fora da lista limpa tudo.
+   */
+  var INVALIDA = {
+    salvarSabados: ['obterSabados', 'obterPainel'],
+    definirTreinamentoDoSabado: ['obterSabados', 'obterPainel', 'obterPlantao'],
+    salvarMeioDia: ['obterMeioDia', 'obterPainel'],
+    salvarPlantao: ['obterPlantao', 'obterPainel'],
+    salvarHomeOffice: ['obterHomeOffice', 'obterPainel'],
+    pularVezHomeOffice: ['obterHomeOffice'],
+    salvarFerias: ['obterFerias', 'obterPainel'],
+    decidirFerias: ['obterFerias', 'obterPainel'],
+    cancelarFerias: ['obterFerias', 'obterPainel'],
+    // um feriado muda a cobrança de vagas em todas as telas de escala
+    definirFeriado: ['obterMeioDia', 'obterPlantao', 'obterSabados', 'obterFerias', 'obterPainel'],
+    proporTroca: ['obterPainel', 'obterSabados', 'obterMeioDia', 'obterPlantao'],
+    responderTroca: ['obterPainel', 'obterSabados', 'obterMeioDia', 'obterPlantao'],
+    cancelarTroca: ['obterPainel', 'obterSabados', 'obterMeioDia', 'obterPlantao'],
+    salvarMinhasPreferencias: ['obterMinhasPreferencias', 'obterPainel'],
+    definirAvisoPlantaoParaTodos: ['obterMinhasPreferencias', 'obterPainel']
+  };
+
+  function esquecerLeituras(funcoes) {
+    Object.keys(respostasGuardadas).forEach(function (chave) {
+      var nome = chave.split(':')[0];
+      if (funcoes.indexOf(nome) >= 0) delete respostasGuardadas[chave];
+    });
+  }
+
+  // barra fina no topo enquanto o servidor está respondendo
+  var chamadasAbertas = 0;
+  var preCarga = null; // {feitas, total} durante o pré-carregamento
+  function pintarBarra() {
+    var barra = document.getElementById('barraCarregando');
+    if (!barra) return;
+    var ativa = chamadasAbertas > 0;
+    barra.classList.toggle('ativa', ativa);
+    var pedaco = barra.firstElementChild;
+    if (preCarga && preCarga.total) {
+      pedaco.style.width = Math.round(100 * preCarga.feitas / preCarga.total) + '%';
+      pedaco.classList.remove('indefinida');
+    } else {
+      pedaco.style.width = '';
+      pedaco.classList.toggle('indefinida', ativa);
+    }
+  }
 
   window.api = function (funcao) {
     var args = Array.prototype.slice.call(arguments, 1);
-    if (!ehLeitura(funcao)) respostasGuardadas = {};
+    if (!ehLeitura(funcao)) {
+      if (INVALIDA[funcao]) esquecerLeituras(INVALIDA[funcao]);
+      else respostasGuardadas = {};
+    }
+    chamadasAbertas++;
+    pintarBarra();
+    var encerrar = function () { chamadasAbertas--; pintarBarra(); };
     return new Promise(function (resolver, rejeitar) {
       var chamada = google.script.run
-        .withSuccessHandler(resolver)
-        .withFailureHandler(function (erro) { rejeitar(erro); });
+        .withSuccessHandler(function (d) { encerrar(); resolver(d); })
+        .withFailureHandler(function (erro) { encerrar(); rejeitar(erro); });
       chamada[funcao].apply(chamada, args);
     });
   };
@@ -39,7 +93,28 @@
       return dados;
     });
   };
-  window.limparRespostasGuardadas = function () { respostasGuardadas = {}; };
+  /**
+   * Busca as telas que o usuário ainda não abriu, uma de cada vez e em segundo plano,
+   * para a troca de aba ser instantânea. Chamado depois que a primeira tela aparece:
+   * a fila é sequencial de propósito, para não disputar com o que ele está olhando.
+   */
+  function preCarregarTelas() {
+    var pendentes = Object.keys(TELAS)
+      .map(function (nome) { return TELAS[nome].precarregar && TELAS[nome].precarregar(); })
+      .filter(function (c) { return c && !respostasGuardadas[c[0] + ':' + JSON.stringify(c[1])]; });
+    if (!pendentes.length) return;
+
+    preCarga = { feitas: 0, total: pendentes.length };
+    pintarBarra();
+    var proxima = function () {
+      var c = pendentes.shift();
+      if (!c) { preCarga = null; pintarBarra(); return; }
+      apiGuardada(c[0], c[1], function () {})
+        .catch(function () { /* pré-carga é opcional: se falhar, a tela busca de novo ao abrir */ })
+        .then(function () { preCarga.feitas++; pintarBarra(); proxima(); });
+    };
+    proxima();
+  }
 
   // ---------- Utilitários ----------
   window.esc = function (texto) {
@@ -317,7 +392,7 @@
           emails: m.querySelector('#prefEmails').checked,
           agenda: m.querySelector('#prefAgenda').checked,
           avisos: avisos
-        }).then(function () { fecharModal(); toast('Configurações salvas.'); limparRespostasGuardadas(); recarregarTela(); })
+        }).then(function () { fecharModal(); toast('Configurações salvas.'); recarregarTela(); })
           .catch(function (e) { botao.disabled = false; mostrarErro(e); });
       });
       var botaoRegras = m.querySelector('#abrirRegras');
@@ -334,7 +409,6 @@
             var meu = m.querySelector('[data-grupo="plantao"]');
             if (meu) meu.checked = ligar;
             m.querySelectorAll('[data-todos]').forEach(function (x) { x.disabled = false; });
-            limparRespostasGuardadas();
           }).catch(function (e) { m.querySelectorAll('[data-todos]').forEach(function (x) { x.disabled = false; }); mostrarErro(e); });
         });
       });
@@ -369,7 +443,6 @@
           .then(function (r) {
             fecharModal();
             toast(r.alteradas ? 'Regras salvas.' : 'Nada mudou.');
-            limparRespostasGuardadas();
             recarregarTela();
           })
           .catch(function (e) { botao.disabled = false; mostrarErro(e); });
@@ -460,7 +533,6 @@
         dataEntrada: m.querySelector('#novaData').value
       }).then(function (r) {
         toast(r.nome + ' entrou no cadastro.');
-        limparRespostasGuardadas();
         return api('obterPessoas').then(function (novo) { desenharPessoas(m, novo); });
       }).catch(function (e) { botao.disabled = false; mostrarErro(e); });
     });
@@ -482,7 +554,6 @@
           .then(function (r) {
             if (!r) { b.disabled = false; return; }
             toast(ativar ? 'Pessoa reativada.' : 'Pessoa inativada.');
-            limparRespostasGuardadas();
             return api('obterPessoas').then(function (novo) { desenharPessoas(m, novo); });
           })
           .catch(function (e) { b.disabled = false; mostrarErro(e); });
@@ -536,7 +607,6 @@
         .then(function () {
           fechar();
           toast('Setores de ' + pessoa.nomeExibicao + ' atualizados.');
-          limparRespostasGuardadas();
           return api('obterPessoas').then(function (novo) { desenharPessoas(m, novo); });
         })
         .catch(function (e) { botao.disabled = false; mostrarErro(e); });
@@ -545,6 +615,8 @@
 
   window.addEventListener('DOMContentLoaded', function () {
     irPara(window.TELA_INICIAL);
+    // espera a tela inicial assentar antes de buscar as outras
+    setTimeout(preCarregarTelas, 1500);
   });
 })();
 </script>

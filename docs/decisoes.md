@@ -34,6 +34,12 @@ Pedido do usuário (21/09/2026): cada colaborador liga/desliga e-mails e eventos
 ## Sem calendário "Escala Suporte"
 Pedido do usuário (22/09/2026): em vez de um calendário próprio da equipe, o evento sai da agenda da conta que roda o sistema e cada pessoa entra como participante — assim ele aparece direto na agenda dela, sem ninguém precisar assinar um calendário novo. `Config > ID_CALENDARIO_PRODUCAO` fica vazio (se um dia quiserem um calendário separado, basta preencher). O usuário aceitou que, se o Google exigir convite, o evento chegue como convite.
 
+## Fluidez: cache por tela, pré-carga e barra de atividade
+Pedido do usuário (22/09/2026). Três mudanças no cliente:
+- **Invalidação seletiva:** cada gravação diz quais leituras ficaram velhas (mapa `INVALIDA` em `Script.html`). Antes, qualquer gravação limpava tudo e todas as telas recarregavam. Gravação que não está no mapa continua limpando tudo (padrão seguro).
+- **Pré-carga em segundo plano:** 1,5 s depois de a primeira tela aparecer, as demais são buscadas uma de cada vez (cada tela declara `precarregar`). Sequencial de propósito: o Apps Script enfileira chamadas do mesmo usuário, e disparar tudo junto atrasaria a tela que a pessoa está olhando. Trocar de aba passa a ser instantâneo.
+- **Barra fina no topo** enquanto o servidor responde, com progresso real durante a pré-carga. Preferida a uma tela de espera bloqueante: mostra atividade sem impedir o uso.
+
 ## Agenda em sentido único
 O sistema é a fonte da verdade e envia para o Google Agenda. Mudanças feitas direto na agenda não voltam para o sistema (evita conflitos). O ID de cada evento criado é guardado para atualizar ou apagar depois.
 

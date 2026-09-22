@@ -84,6 +84,7 @@
   TELAS.sabados = {
     titulo: 'Sábados',
     descricao: '',
+    precarregar: function () { return ['obterSabados', [hojeIso().substring(0, 7)]]; },
     carregar: function (corpo, acoes) {
       var p = TELAS.sabados.parametros;
       var mesAtual = hojeIso().substring(0, 7);
@@ -497,7 +498,6 @@
         .then(function () {
           fecharModal();
           toast(marcar ? 'Sábado marcado como treinamento.' : 'Treinamento removido.');
-          limparRespostasGuardadas();
           carregar(ctx.corpo, ctx.acoes);
         })
         .catch(function (e) { fecharModal(); mostrarErro(e); });
