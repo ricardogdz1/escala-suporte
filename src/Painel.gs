@@ -102,6 +102,7 @@ function montarDia_(data, c) {
   };
   var diaCurto = formatarDataBr_(data).substring(0, 5);
   var nomeDia = DIAS_SEMANA[data.getDay()].toLowerCase();
+  var rotuloDia = DIAS_SEMANA[data.getDay()] + ' ' + diaCurto; // cabeçalho do grupo de avisos do dia
 
   var bloqueios = bloqueiosDoDia_(c.bloqueios, data);
   var feriado = bloqueios.some(function (b) { return b.tipo === BLOQUEIO.FERIADO; });
@@ -135,7 +136,8 @@ function montarDia_(data, c) {
       dia.problemas.meioDia = {
         curto: pMeioDia.curto, tela: 'meiodia', grupo: 'meiodia',
         titulo: 'Meio-dia de ' + nomeDia + ' ' + diaCurto,
-        texto: pMeioDia.texto
+        texto: pMeioDia.texto,
+        rotuloDia: rotuloDia, resumo: pMeioDia.texto.replace(/\.$/, '')
       };
     }
   }
@@ -143,10 +145,14 @@ function montarDia_(data, c) {
     var vagasPlantao = ehSabado_(data) ? c.vagasPlantaoSabado : c.vagasPlantao;
     var pPlantao = problemaDeVagas_(dia.plantao.length, vagasPlantao);
     if (pPlantao) {
+      var textoPlantao = pPlantao.quantidade === 0
+        ? 'Ninguém escalado (' + (ehSabado_(data) ? '13h–17h' : '18h–20h') + ').'
+        : pPlantao.texto;
       dia.problemas.plantao = {
         curto: pPlantao.curto, tela: 'plantao', grupo: 'plantao',
         titulo: 'Plantão de ' + nomeDia + ' ' + diaCurto,
-        texto: pPlantao.quantidade === 0 ? 'Ninguém escalado (' + (ehSabado_(data) ? '13h–17h' : '18h–20h') + ').' : pPlantao.texto
+        texto: textoPlantao,
+        rotuloDia: rotuloDia, resumo: textoPlantao.replace(/\.$/, '')
       };
     }
   }
@@ -158,10 +164,14 @@ function montarDia_(data, c) {
     var presencial = bloqueios.filter(function (b) { return b.tipo === BLOQUEIO.SEMANA_PRESENCIAL; });
     if (dia.homeOffice.length > c.vagasHomeOffice) {
       dia.problemas.homeOffice = { curto: dia.homeOffice.length + ' pessoas', tela: 'homeoffice', grupo: 'homeoffice',
-        titulo: 'Home office na semana de ' + semanaBr, texto: dia.homeOffice.length + ' pessoas para ' + c.vagasHomeOffice + ' vaga' + (c.vagasHomeOffice === 1 ? '' : 's') + ': ' + dia.homeOffice.join(', ') + '.' };
+        titulo: 'Home office na semana de ' + semanaBr, texto: dia.homeOffice.length + ' pessoas para ' + c.vagasHomeOffice + ' vaga' + (c.vagasHomeOffice === 1 ? '' : 's') + ': ' + dia.homeOffice.join(', ') + '.',
+        rotuloDia: 'Semana de ' + semanaBr,
+        resumo: dia.homeOffice.length + ' pessoas para ' + c.vagasHomeOffice + ' vaga' + (c.vagasHomeOffice === 1 ? '' : 's') + ': ' + dia.homeOffice.join(', ') };
     } else if (presencial.length && dia.homeOffice.length) {
       dia.problemas.homeOffice = { curto: 'Semana presencial', tela: 'homeoffice', grupo: 'homeoffice',
-        titulo: 'Home office em semana presencial (' + semanaBr + ')', texto: dia.homeOffice.join(', ') + ' com reserva numa semana definida como presencial.' };
+        titulo: 'Home office em semana presencial (' + semanaBr + ')', texto: dia.homeOffice.join(', ') + ' com reserva numa semana definida como presencial.',
+        rotuloDia: 'Semana de ' + semanaBr,
+        resumo: 'Semana presencial: ' + dia.homeOffice.join(', ') + ' com reserva' };
     }
   }
 
@@ -178,20 +188,25 @@ function montarDia_(data, c) {
     if (!dia.sabado.bloqueado) {
       if (total === 0) {
         dia.problemas.sabado = { curto: 'Sem ninguém', tela: 'sabados', grupo: 'sabados',
-          titulo: 'Sábado ' + diaCurto + ' sem ninguém', texto: 'Nenhuma pessoa escalada. O mínimo é ' + c.sabadoMin + '.' };
+          titulo: 'Sábado ' + diaCurto + ' sem ninguém', texto: 'Nenhuma pessoa escalada. O mínimo é ' + c.sabadoMin + '.',
+          rotuloDia: rotuloDia, resumo: 'Ninguém escalado (mín. ' + c.sabadoMin + ')' };
       } else if (total < c.sabadoMin) {
         dia.problemas.sabado = { curto: total + ' pessoa' + (total > 1 ? 's' : '') + ' (mín. ' + c.sabadoMin + ')', tela: 'sabados', grupo: 'sabados',
-          titulo: 'Sábado ' + diaCurto + ' com ' + total + ' pessoa' + (total > 1 ? 's' : ''), texto: 'O mínimo é ' + c.sabadoMin + '.' };
+          titulo: 'Sábado ' + diaCurto + ' com ' + total + ' pessoa' + (total > 1 ? 's' : ''), texto: 'O mínimo é ' + c.sabadoMin + '.',
+          rotuloDia: rotuloDia, resumo: total + ' pessoa' + (total > 1 ? 's' : '') + ' escalada' + (total > 1 ? 's' : '') + ' (mín. ' + c.sabadoMin + ')' };
       } else if (total > c.sabadoMax) {
         dia.problemas.sabado = { curto: total + ' pessoas (máx. ' + c.sabadoMax + ')', tela: 'sabados', grupo: 'sabados',
-          titulo: 'Sábado ' + diaCurto + ' com ' + total + ' pessoas', texto: 'O máximo é ' + c.sabadoMax + '.' };
+          titulo: 'Sábado ' + diaCurto + ' com ' + total + ' pessoas', texto: 'O máximo é ' + c.sabadoMax + '.',
+          rotuloDia: rotuloDia, resumo: total + ' pessoas escaladas (máx. ' + c.sabadoMax + ')' };
       }
       if (total > 0) {
         var semCobertura = setoresSemCobertura_(escalados, c);
         if (semCobertura.length) {
           dia.problemas.setores = { curto: 'Sem ' + semCobertura.join(', '), tela: 'sabados', grupo: 'sabados',
             titulo: 'Sábado ' + diaCurto + ' sem ' + semCobertura.map(capitalizar_).join(', '),
-            texto: semCobertura.length === 1 ? 'Nenhuma pessoa do setor escalada.' : 'Nenhuma pessoa desses setores escalada.' };
+            texto: semCobertura.length === 1 ? 'Nenhuma pessoa do setor escalada.' : 'Nenhuma pessoa desses setores escalada.',
+            rotuloDia: rotuloDia,
+            resumo: (semCobertura.length === 1 ? 'Setor sem ninguém: ' : 'Setores sem ninguém: ') + semCobertura.map(capitalizar_).join(', ') };
         }
       }
     }
@@ -245,10 +260,16 @@ function avisosAbertos_(u) {
     var dia = montarDia_(d, contexto);
     Object.keys(dia.problemas).forEach(function (chave) {
       var p = dia.problemas[chave];
-      lista.push({ data: dia.data, grupo: p.grupo, titulo: p.titulo, texto: p.texto, tela: p.tela });
+      lista.push({ data: dia.data, grupo: p.grupo, titulo: p.titulo, texto: p.texto, tela: p.tela,
+        rotuloDia: p.rotuloDia || p.titulo, resumo: p.resumo || p.texto });
     });
   });
-  if (u) lista = lista.concat(avisosFeriasPainel_(u));
+  // férias não são por dia do calendário: o próprio título vira o cabeçalho do grupo
+  if (u) lista = lista.concat(avisosFeriasPainel_(u).map(function (a) {
+    a.rotuloDia = a.rotuloDia || a.titulo;
+    a.resumo = a.resumo || a.texto;
+    return a;
+  }));
   lista.sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : 0; });
   return { lista: lista, ate: formatarDataBr_(fim).substring(0, 5) };
 }

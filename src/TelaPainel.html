@@ -32,7 +32,13 @@
   .grupo-aviso .detalhe { display: none; padding: 0 12px 12px; }
   .grupo-aviso.aberto .detalhe { display: block; }
   .grupo-aviso .detalhe .lista-avisos { gap: 8px; }
-  .grupo-aviso .detalhe .aviso { background: var(--cartao); }
+  .grupo-aviso .detalhe .aviso { background: var(--cartao); flex-direction: column; gap: 6px; }
+  .grupo-aviso .detalhe .aviso::before { display: none; }
+  .aviso-dia .titulo-dia { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .aviso-dia .titulo-dia::before { content: "⚠"; font-size: 16px; line-height: 1.2; flex: 0 0 auto; }
+  .aviso-dia ul { list-style: none; margin: 0; padding: 0 0 0 24px; display: flex; flex-direction: column; gap: 4px; }
+  .aviso-dia li { font-size: 14px; position: relative; }
+  .aviso-dia li::before { content: "·"; position: absolute; left: -12px; font-weight: 700; }
   .painel-lateral .lista-avisos .aviso { cursor: pointer; }
   .painel-lateral .lista-avisos .aviso:hover { background: #F7E4C3; }
   .painel-lateral .rodape { padding-top: 18px; }
@@ -237,10 +243,27 @@
    * Um cartão por grupo (Sábados, Plantão…): fechado mostra a quantidade e o primeiro dia;
    * clicando, abre a lista completa dos avisos do grupo (cada um leva à tela certa).
    */
+  /** Junta os avisos do mesmo dia (mesma data + mesmo rótulo) num só item, na ordem em que vieram. */
+  function porDia(itens) {
+    var ordem = [];
+    var porChave = {};
+    itens.forEach(function (av) {
+      var rotulo = av.rotuloDia || av.titulo;
+      var chave = av.data + '|' + rotulo;
+      if (!porChave[chave]) {
+        porChave[chave] = { rotulo: rotulo, data: av.data, itens: [] };
+        ordem.push(porChave[chave]);
+      }
+      porChave[chave].itens.push(av);
+    });
+    return ordem;
+  }
+
   function cartaoGrupo(g, itens, abrir) {
-    var n = itens.length;
+    var dias = porDia(itens);
+    var n = dias.length;
     var resumo = n
-      ? n + ' aviso' + (n > 1 ? 's' : '') + ' · primeiro em ' + diaMes(itens[0].data) + (n > 1 ? ', último em ' + diaMes(itens[n - 1].data) : '')
+      ? n + (n > 1 ? ' dias com aviso' : ' dia com aviso') + ' · primeiro em ' + diaMes(dias[0].data) + (n > 1 ? ', último em ' + diaMes(dias[n - 1].data) : '')
       : 'Nenhum aviso.';
     var c = el(
       '<div class="grupo-aviso' + (n ? ' com-avisos' : '') + '">' +
@@ -254,10 +277,14 @@
     if (!n) return c;
 
     var lista = c.querySelector('.lista-avisos');
-    itens.forEach(function (av) {
-      var item = el('<div class="aviso" role="button" tabindex="0"><div><strong>' + esc(av.titulo) + '</strong>' +
-        '<div class="explicacao">' + esc(av.texto) + '</div></div></div>');
-      var ir = function () { abrir(av); };
+    // um cartão por dia (ou semana, no home office): as várias condições do mesmo dia
+    // viram linhas dentro dele, em vez de cartões soltos
+    porDia(itens).forEach(function (dia) {
+      var item = el('<div class="aviso aviso-dia" role="button" tabindex="0">' +
+        '<div class="titulo-dia">' + esc(dia.rotulo) + '</div>' +
+        '<ul>' + dia.itens.map(function (av) { return '<li>' + esc(av.resumo || av.texto) + '</li>'; }).join('') + '</ul>' +
+        '</div>');
+      var ir = function () { abrir(dia.itens[0]); };
       item.addEventListener('click', ir);
       item.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } });
       lista.appendChild(item);
@@ -283,10 +310,17 @@
     var a = el('<aside class="cartao painel-lateral"></aside>');
     var abrir = function (av) { irPara(av.tela, { mes: av.data.substring(0, 7), data: av.data }); };
 
+    // a pílula conta dias com aviso, como os grupos abaixo (um dia pode ter várias condições)
+    var porGrupo = {};
+    GRUPOS_AVISOS.forEach(function (g) {
+      porGrupo[g.chave] = p.avisos.filter(function (av) { return av.grupo === g.chave; });
+    });
+    var totalDias = GRUPOS_AVISOS.reduce(function (t, g) { return t + porDia(porGrupo[g.chave]).length; }, 0);
+
     a.innerHTML =
       '<div class="topo-avisos">' +
         '<h2>Avisos abertos</h2>' +
-        (p.avisos.length ? '<span class="etiqueta ambar pilula">' + p.avisos.length + '</span>' : '') +
+        (totalDias ? '<span class="etiqueta ambar pilula">' + totalDias + '</span>' : '') +
       '</div>' +
       '<p class="periodo-avisos">De hoje até ' + esc(p.avisosAte) + '</p>' +
       '<div class="grupos-avisos"></div>' +
@@ -294,8 +328,7 @@
 
     var grupos = a.querySelector('.grupos-avisos');
     GRUPOS_AVISOS.forEach(function (g) {
-      var itens = p.avisos.filter(function (av) { return av.grupo === g.chave; });
-      grupos.appendChild(cartaoGrupo(g, itens, abrir));
+      grupos.appendChild(cartaoGrupo(g, porGrupo[g.chave], abrir));
     });
     if (p.avisos.length) {
       var primeiro = p.avisos[0];
