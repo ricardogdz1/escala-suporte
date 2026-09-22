@@ -31,6 +31,9 @@ O projeto está sendo feito em segredo, como surpresa para o gestor. O modo test
 ## Notificação é opcional por pessoa
 Pedido do usuário (21/09/2026): cada colaborador liga/desliga e-mails e eventos de agenda para si. Fica na aba `Preferencias` e é aplicado dentro de `Notificacoes.gs`, então nenhum módulo precisa se preocupar com isso. Padrão: **desligados** (decisão do usuário, mesma data). Eventos vão como compromisso já aceito, sem convite (Calendar API v3, `responseStatus: accepted`, `sendUpdates: none`), porque a escala é fato, não convite.
 
+## Sem calendário "Escala Suporte"
+Pedido do usuário (22/09/2026): em vez de um calendário próprio da equipe, o evento sai da agenda da conta que roda o sistema e cada pessoa entra como participante — assim ele aparece direto na agenda dela, sem ninguém precisar assinar um calendário novo. `Config > ID_CALENDARIO_PRODUCAO` fica vazio (se um dia quiserem um calendário separado, basta preencher). O usuário aceitou que, se o Google exigir convite, o evento chegue como convite.
+
 ## Agenda em sentido único
 O sistema é a fonte da verdade e envia para o Google Agenda. Mudanças feitas direto na agenda não voltam para o sistema (evita conflitos). O ID de cada evento criado é guardado para atualizar ou apagar depois.
 

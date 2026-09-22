@@ -43,15 +43,13 @@ Decisões: sem tela nova (ações nas telas e em Configurações); feriado facul
 - [x] Pessoas: adicionar e inativar/reativar na janela Configurações › Pessoas (`Pessoas.gs`, `Script.html`)
 - Já existia: escalar/tirar qualquer pessoa nas quatro telas e todo o fluxo de status das férias
 
-## Fase 6 – Google Agenda 🟨 (22/09/2026)
-- [x] Eventos criados pelo serviço avançado do Calendar, com a pessoa já como participante aceita e sem e-mail de convite (feito na Fase 2–5)
-- [x] `prepararCalendarioProducao()`: cria o calendário "Escala Suporte", compartilha leitura com o domínio e grava o ID na Config
-- [ ] Rodar essa função na conta do projeto (passo do usuário, junto da virada para produção)
-- ⛔ "Local de trabalho: casa" e "fora do escritório" **na agenda pessoal de cada colega**: o Google só permite esses tipos de evento no calendário primário da própria pessoa. O sistema roda na conta do criador, então precisaria de delegação de domínio (configuração do admin do Workspace). Enquanto isso, o home office e as férias aparecem como evento do calendário "Escala Suporte" com a pessoa já aceita.
+## Fase 6 – Google Agenda ✅ (22/09/2026)
+- [x] Eventos criados pelo serviço avançado do Calendar, com a pessoa como participante já aceito (feito nas Fases 2–5)
+- [x] **Sem calendário separado** (decisão do usuário, 22/09/2026): o evento sai da agenda da conta que roda o sistema e entra na agenda de cada pessoa, que é adicionada como participante. `ID_CALENDARIO_PRODUCAO` fica vazio; preencher só se um dia quiserem um calendário próprio.
+- ⛔ "Local de trabalho: casa" e "fora do escritório" **na agenda pessoal**: o Google só permite esses tipos de evento no calendário primário da própria pessoa, o que exigiria delegação de domínio (admin do Workspace). O home office continua como evento comum de dia inteiro.
 
 ## Produção ⬜
 1. Apagar lançamentos de teste (manter cadastro): `apagarDadosDeExemplo()`
-2. Rodar `prepararCalendarioProducao()` (cria o calendário, compartilha com o domínio e preenche a Config)
-3. Modo teste = Não (a partir daí e-mails e eventos vão para a equipe de verdade)
-4. Nova implantação: Aplicativo da Web, executar como o criador, acesso a qualquer pessoa em agro1.inf.br (link /exec)
-5. Proteger abas; dar acesso de editor ao gestor
+2. Modo teste = Não (a partir daí e-mails e eventos vão para a equipe de verdade)
+3. Nova implantação: Aplicativo da Web, executar como o criador, acesso a qualquer pessoa em agro1.inf.br (link /exec)
+4. Proteger abas; dar acesso de editor ao gestor

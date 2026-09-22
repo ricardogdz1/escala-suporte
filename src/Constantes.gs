@@ -108,8 +108,8 @@ var NAO = 'Não';
 var CONFIG_PADRAO = [
   ['MODO_TESTE', SIM, 'Sim = todo e-mail/convite vai só para o E-mail de teste e eventos vão para o calendário de teste'],
   ['EMAIL_TESTE', '', 'Para onde vão os e-mails enquanto Modo teste = Sim (preenchido pelo setup com o e-mail de quem rodou)'],
-  ['ID_CALENDARIO_TESTE', '', 'ID do calendário usado no modo teste (vazio = agenda da conta que roda o sistema)'],
-  ['ID_CALENDARIO_PRODUCAO', '', 'ID do calendário "Escala Suporte" (preencher na produção)'],
+  ['ID_CALENDARIO_TESTE', '', 'Calendário usado no modo teste. Vazio = agenda da conta que roda o sistema'],
+  ['ID_CALENDARIO_PRODUCAO', '', 'Calendário de onde saem os eventos em produção. Vazio (o normal) = agenda da conta que roda o sistema; cada pessoa entra como participante e o evento aparece na agenda dela'],
   ['DOMINIO', 'agro1.inf.br', 'Domínio dos e-mails corporativos'],
   ['SABADO_MIN', 6, 'Aviso se o sábado tiver menos pessoas que isso (somando os dois turnos)'],
   ['SABADO_MAX', 8, 'Aviso se o sábado tiver mais pessoas que isso'],

@@ -78,7 +78,7 @@ GERAL, CONTABILIDADE, EMISSÃO, SEMENTES, ATUALIZAÇÃO, AQILA, CADASTROS (hoje 
 - Quem não ligou não recebe e não entra no evento; o sistema continua funcionando igual (o lançamento existe, só não notifica).
 - Os eventos entram na agenda da pessoa como **compromisso confirmado** (participante com presença aceita), **sem e-mail de convite** — serviço avançado do Calendar; se ele falhar, CalendarApp sem convite.
 - **Avisos do Painel por módulo:** cada pessoa liga/desliga os avisos de Sábados, Meio-dia, Plantão, Home office e Férias (padrão: todos ligados, **menos Plantão**, porque plantões são ocasionais). O gestor tem um botão para ativar/desativar o aviso de plantão para toda a equipe de uma vez; depois cada um pode mudar o seu.
-- Eventos de sábado, meio-dia, plantão e home office: um evento por pessoa, convidando-a, no calendário "Escala Suporte".
+- Eventos de sábado, meio-dia, plantão, home office e férias: um evento por pessoa, criado na agenda da conta que roda o sistema, com ela como participante — aparece na agenda dela. Não há calendário separado.
 - Sábado: horário do turno (8–11 ou 9–12). Meio-dia: 12:30–14:00 como referência do intervalo deslocado. Plantão: 18:00–20:00 (dia útil) ou 13:00–17:00 (sábado). Home office: dia inteiro, segunda a sexta.
 
 ## Como os avisos aparecem
