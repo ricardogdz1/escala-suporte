@@ -1,6 +1,6 @@
 # Regras de negócio
 
-Todas as regras abaixo geram **aviso**, nunca bloqueio. Os números ficam na aba `Config`.
+Todas as regras abaixo geram **aviso**, nunca bloqueio. Os números ficam na aba `Config` e o **gestor** edita os principais pelo app, em Configurações › "Regras da escala" (mín./máx. do sábado, vagas de meio-dia e plantão, home office por semana, antecedência e sobreposição de férias). IDs de calendário, modo teste e importação continuam só na planilha.
 
 ## Setores
 GERAL, CONTABILIDADE, EMISSÃO, SEMENTES, ATUALIZAÇÃO, AQILA, CADASTROS (hoje sem pessoas; o gestor pode desativar).

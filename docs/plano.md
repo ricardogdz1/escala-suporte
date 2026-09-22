@@ -39,7 +39,7 @@ Status: ⬜ não iniciado · 🟨 em andamento · ✅ concluído
 Decisões: sem tela nova (ações nas telas e em Configurações); feriado facultativo não cobra escala, muda só a etiqueta; sem "ver como colaborador".
 - [x] Sábado de treinamento da equipe pelo cartão (`Bloqueios.gs`, `TelaSabados.html`)
 - [x] Feriados obrigatório/facultativo na grade de Meio-dia e Plantão (`Bloqueios.gs`, `TelaSemanal.html`)
-- [ ] Regras (mín/máx do sábado e vagas) numa janela de Configurações
+- [x] Regras (mín/máx do sábado, vagas e limites de férias) na janela Configurações › Regras da escala (`Config.gs`, `Script.html`)
 - [ ] Pessoas: adicionar e inativar numa janela de Configurações
 - Já existia: escalar/tirar qualquer pessoa nas quatro telas e todo o fluxo de status das férias
 

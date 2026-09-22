@@ -297,6 +297,10 @@
             '<div class="acoes" style="justify-content:flex-start;margin-top:8px">' +
               '<button type="button" class="botao neutro pequeno" data-todos="1">Ativar plantão para todos</button>' +
               '<button type="button" class="botao neutro pequeno" data-todos="0">Desativar para todos</button>' +
+            '</div>' +
+            '<p class="nota" style="margin-top:14px">Limites das escalas: mínimo do sábado, vagas do meio-dia e do plantão, férias.</p>' +
+            '<div class="acoes" style="justify-content:flex-start;margin-top:8px">' +
+              '<button type="button" class="botao neutro pequeno" id="abrirRegras">Regras da escala…</button>' +
             '</div>'
           : '') +
         '<div class="acoes"><button type="button" class="botao neutro" id="prefCancelar">Cancelar</button>' +
@@ -315,6 +319,9 @@
         }).then(function () { fecharModal(); toast('Configurações salvas.'); limparRespostasGuardadas(); recarregarTela(); })
           .catch(function (e) { botao.disabled = false; mostrarErro(e); });
       });
+      var botaoRegras = m.querySelector('#abrirRegras');
+      if (botaoRegras) botaoRegras.addEventListener('click', function () { fecharModal(); janelaRegras(); });
+
       m.querySelectorAll('[data-todos]').forEach(function (b) {
         b.addEventListener('click', function () {
           var ligar = b.dataset.todos === '1';
@@ -330,6 +337,42 @@
       });
     }).catch(function (e) { fecharModal(); mostrarErro(e); });
   });
+
+  /**
+   * Gestor: limites que o sistema usa nos avisos (aba Config).
+   * Mudar aqui muda o aviso de todo mundo, então o servidor valida cada número.
+   */
+  function janelaRegras() {
+    var m = abrirModal('<h2>Regras da escala</h2><div class="carregando">Carregando…</div>');
+    api('obterRegras').then(function (regras) {
+      m.innerHTML =
+        '<h2>Regras da escala</h2>' +
+        '<p class="nota">Valem para toda a equipe. Os avisos passam a usar esses números na hora.</p>' +
+        regras.map(function (r) {
+          return '<label class="campo">' + esc(r.rotulo) +
+            '<input type="number" data-chave="' + esc(r.chave) + '" value="' + r.valor + '" min="' + r.min + '" max="' + r.max + '" step="1" inputmode="numeric">' +
+            '<span class="nota" style="font-weight:400">' + esc(r.ajuda) + '</span></label>';
+        }).join('') +
+        '<div class="acoes"><button type="button" class="botao neutro" data-acao="cancelar">Cancelar</button>' +
+        '<button type="button" class="botao" data-acao="salvar">Salvar</button></div>';
+
+      m.querySelector('[data-acao="cancelar"]').addEventListener('click', fecharModal);
+      m.querySelector('[data-acao="salvar"]').addEventListener('click', function () {
+        var botao = m.querySelector('[data-acao="salvar"]');
+        botao.disabled = true;
+        var valores = {};
+        m.querySelectorAll('[data-chave]').forEach(function (c) { valores[c.dataset.chave] = c.value; });
+        api('salvarRegras', valores)
+          .then(function (r) {
+            fecharModal();
+            toast(r.alteradas ? 'Regras salvas.' : 'Nada mudou.');
+            limparRespostasGuardadas();
+            recarregarTela();
+          })
+          .catch(function (e) { botao.disabled = false; mostrarErro(e); });
+      });
+    }).catch(function (e) { fecharModal(); mostrarErro(e); });
+  }
 
   window.addEventListener('DOMContentLoaded', function () {
     irPara(window.TELA_INICIAL);

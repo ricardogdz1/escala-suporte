@@ -250,12 +250,13 @@
   .numero-grande.ambar { color: var(--ambar); }
 
   .campo { display: block; margin-top: 12px; font-weight: 600; font-size: 14px; }
-  .campo select, .campo input[type="date"], .campo input[type="text"] {
+  .campo select, .campo input:not([type="checkbox"]):not([type="radio"]) {
     display: block; width: 100%; min-height: 46px; margin-top: 6px; padding: 8px 12px;
     border: 1.5px solid var(--borda); border-radius: 9px; font: inherit; font-weight: 400; background: #fff;
   }
   .secao-config { margin: 16px 0 2px; font-size: 16px; }
   .secao-config:first-of-type { margin-top: 8px; }
+  .campo .nota { display: block; margin-top: 4px; }
   .opcao { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--borda); cursor: pointer; }
   .opcao:last-of-type { border-bottom: 0; }
   .opcao input { width: 22px; height: 22px; margin: 2px 0 0; flex: 0 0 auto; accent-color: var(--verde); }
