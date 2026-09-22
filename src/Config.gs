@@ -48,6 +48,18 @@ function modoTeste() {
   return obterConfigSim('MODO_TESTE');
 }
 
+/** Grava (ou cria) uma chave na aba Config e limpa o cache. */
+function gravarConfig_(chave, valor) {
+  var atual = lerAba_(ABA_CONFIG).filter(function (l) { return String(l['Chave'] || '').trim() === chave; })[0];
+  if (atual) {
+    atualizarLinha_(ABA_CONFIG, atual._linha, { 'Valor': valor });
+  } else {
+    var padrao = CONFIG_PADRAO.filter(function (c) { return c[0] === chave; })[0];
+    anexarLinha_(ABA_CONFIG, { 'Chave': chave, 'Valor': valor, 'Descrição': padrao ? padrao[2] : '' });
+  }
+  limparCacheConfig();
+}
+
 function limparCacheConfig() {
   CacheService.getScriptCache().remove(CACHE_CONFIG_CHAVE);
 }
@@ -117,13 +129,8 @@ function salvarRegras(valores) {
     lerAba_(ABA_CONFIG).forEach(function (l) { linhas[String(l['Chave'] || '').trim()] = l; });
     aGravar.forEach(function (g) {
       var atual = linhas[g.chave];
-      if (atual) {
-        if (Number(atual['Valor']) === g.valor) return;
-        atualizarLinha_(ABA_CONFIG, atual._linha, { 'Valor': g.valor });
-      } else {
-        var padrao = CONFIG_PADRAO.filter(function (c) { return c[0] === g.chave; })[0];
-        anexarLinha_(ABA_CONFIG, { 'Chave': g.chave, 'Valor': g.valor, 'Descrição': padrao ? padrao[2] : '' });
-      }
+      if (atual && Number(atual['Valor']) === g.valor) return;
+      gravarConfig_(g.chave, g.valor);
       alteradas++;
     });
   } finally {

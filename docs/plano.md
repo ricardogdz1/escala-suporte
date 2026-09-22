@@ -31,9 +31,9 @@ Status: ⬜ não iniciado · 🟨 em andamento · ✅ concluído
 ## Fase 4 – Trocas ✅ (21/09/2026)
 - [x] Propor (⇄ nas telas), aceitar/recusar/cancelar no Painel, avisos dos dois lados, agenda refeita, e-mails para colega e gestor (`Trocas.gs`)
 
-## Fase 5 – Férias 🟨 (21/09/2026)
+## Fase 5 – Férias ✅ (22/09/2026)
 - [x] Saldo, rascunho/solicitar/aprovar/devolver/encaminhar, linha do tempo da equipe com sobreposições e coletivas, avisos (CLT desligada até o RH confirmar), e-mails, evento na agenda ao aprovar (`Ferias.gs`, `TelaFerias.html`)
-- [ ] Testar no /dev e ajustar
+- [x] Testado no /dev pelo usuário (22/09/2026)
 
 ## Fase 7 – Gestor ✅ (22/09/2026)
 Decisões: sem tela nova (ações nas telas e em Configurações); feriado facultativo não cobra escala, muda só a etiqueta; sem "ver como colaborador".
@@ -43,13 +43,15 @@ Decisões: sem tela nova (ações nas telas e em Configurações); feriado facul
 - [x] Pessoas: adicionar e inativar/reativar na janela Configurações › Pessoas (`Pessoas.gs`, `Script.html`)
 - Já existia: escalar/tirar qualquer pessoa nas quatro telas e todo o fluxo de status das férias
 
-## Fase 6 – Google Agenda ⬜
-- Calendário compartilhado "Escala Suporte" (convidando a pessoa)
-- Depois: "local de trabalho: casa" e "fora do escritório" na agenda pessoal
+## Fase 6 – Google Agenda 🟨 (22/09/2026)
+- [x] Eventos criados pelo serviço avançado do Calendar, com a pessoa já como participante aceita e sem e-mail de convite (feito na Fase 2–5)
+- [x] `prepararCalendarioProducao()`: cria o calendário "Escala Suporte", compartilha leitura com o domínio e grava o ID na Config
+- [ ] Rodar essa função na conta do projeto (passo do usuário, junto da virada para produção)
+- ⛔ "Local de trabalho: casa" e "fora do escritório" **na agenda pessoal de cada colega**: o Google só permite esses tipos de evento no calendário primário da própria pessoa. O sistema roda na conta do criador, então precisaria de delegação de domínio (configuração do admin do Workspace). Enquanto isso, o home office e as férias aparecem como evento do calendário "Escala Suporte" com a pessoa já aceita.
 
 ## Produção ⬜
-1. Apagar lançamentos de teste (manter cadastro)
-2. Criar calendário "Escala Suporte" e colocar o ID na Config
-3. Modo teste = Não
+1. Apagar lançamentos de teste (manter cadastro): `apagarDadosDeExemplo()`
+2. Rodar `prepararCalendarioProducao()` (cria o calendário, compartilha com o domínio e preenche a Config)
+3. Modo teste = Não (a partir daí e-mails e eventos vão para a equipe de verdade)
 4. Nova implantação: Aplicativo da Web, executar como o criador, acesso a qualquer pessoa em agro1.inf.br (link /exec)
 5. Proteger abas; dar acesso de editor ao gestor

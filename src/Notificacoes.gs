@@ -269,3 +269,56 @@ function testarNotificacoes() {
   Logger.log('Evento criado: ' + idEvento + ' no calendário "' + calendario_().getName() + '"');
   Logger.log('Confira a aba ' + ABA_LOG_NOTIFICACOES + '.');
 }
+
+// ---------- Instalação do calendário de produção ----------
+
+/**
+ * Cria (uma vez) o calendário "Escala Suporte", compartilha com o domínio e
+ * guarda o ID em Config > ID_CALENDARIO_PRODUCAO. Rodar no editor.
+ *
+ * Idempotente: se a Config já tem um calendário válido, não cria outro.
+ * Os eventos só passam a ir para lá quando MODO_TESTE = Não.
+ */
+function prepararCalendarioProducao() {
+  var nome = 'Escala Suporte';
+  var atual = String(obterConfig('ID_CALENDARIO_PRODUCAO')).trim();
+  if (atual) {
+    var jaExiste = CalendarApp.getCalendarById(atual);
+    if (jaExiste) {
+      Logger.log('Config já aponta para "' + jaExiste.getName() + '" (' + atual + '). Nada a fazer.');
+      return atual;
+    }
+    Logger.log('O ID que está na Config não abre (' + atual + '); criando um calendário novo.');
+  }
+
+  var calendario = CalendarApp.createCalendar(nome, {
+    summary: 'Sábados, plantões, meio-dia, home office e férias da equipe de suporte',
+    timeZone: Session.getScriptTimeZone(),
+    color: CalendarApp.Color.GREEN
+  });
+  var id = calendario.getId();
+
+  gravarConfig_('ID_CALENDARIO_PRODUCAO', id);
+
+  // leitura para todo o domínio: a equipe enxerga a escala sem precisar de convite
+  var dominio = String(obterConfig('DOMINIO')).trim();
+  var compartilhado = 'não';
+  if (dominio) {
+    try {
+      Calendar.Acl.insert({ scope: { type: 'domain', value: dominio }, role: 'reader' }, id);
+      compartilhado = 'sim, leitura para ' + dominio;
+    } catch (e) {
+      compartilhado = 'falhou (' + e.message + ') — compartilhe pelo Google Agenda';
+    }
+  }
+
+  Logger.log([
+    'Calendário criado: ' + nome,
+    'ID: ' + id,
+    'Gravado em Config > ID_CALENDARIO_PRODUCAO',
+    'Compartilhado com o domínio: ' + compartilhado,
+    '',
+    'Enquanto MODO_TESTE = Sim, os eventos continuam indo para o calendário de teste.'
+  ].join('\n'));
+  return id;
+}
