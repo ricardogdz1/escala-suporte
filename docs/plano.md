@@ -62,5 +62,15 @@ Não existem dois bancos: teste e produção usam **a mesma planilha e o mesmo c
 - Teste (`/dev`): sempre o código mais recente, só para quem edita o script — `AKfycbwpbaraP0mGgUvwlkX-QVvGVny53IWoGJ9wiQGobQ`
 - Produção (`/exec`): versão publicada, para a equipe — `AKfycbyN6Et8LhhLsFbmnYlQ6JIrH4wjznr6YL--sgNiXeeWAQJB1YVEIMtXvewftvcVuTg`
 
-Mudou o código? O `/dev` pega na hora; o `/exec` só depois de publicar uma versão nova
-(`clasp create-version` + `clasp redeploy <id da implantação> -v <versão>`).
+Mudou o código? O `/dev` pega na hora; o `/exec` só depois de publicar uma versão nova:
+
+```
+clasp create-version "o que mudou"
+clasp redeploy AKfycbyN6Et8LhhLsFbmnYlQ6JIrH4wjznr6YL--sgNiXeeWAQJB1YVEIMtXvewftvcVuTg -V <número da versão> -d "Produção"
+```
+
+Atenção ao `-V` maiúsculo: o `-v` minúsculo mostra a versão do próprio clasp e não faz nada.
+Versão publicada hoje: **3** (desempenho: cache das abas, painel otimizado, avisos por dia).
+
+Gatilhos instalados na conta do projeto: `processarFila` (fila de agenda/e-mail, sob demanda)
+e `aquecerCache` (a cada 5 min, 6h–20h, seg–sáb).
