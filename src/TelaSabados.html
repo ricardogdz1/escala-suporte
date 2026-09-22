@@ -1,7 +1,22 @@
 <style>
   .lista-sabados { display: flex; flex-direction: column; gap: 14px; }
+  .separador-mes {
+    font-family: var(--fonte-texto); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--texto-suave); margin: 10px 0 -4px 4px;
+  }
+  .lista-sabados .separador-mes:first-child { margin-top: 0; }
+  .cartao-mais-meses {
+    display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; padding: 12px 20px;
+    text-align: left; font: inherit; color: var(--texto); cursor: pointer; background: var(--cinza-claro); border-style: dashed;
+  }
+  .cartao-mais-meses:hover { background: var(--cinza-medio); }
+  .cartao-mais-meses:disabled { cursor: default; opacity: 0.7; }
+  .cartao-mais-meses .seta { color: var(--verde); font-size: 14px; }
+  .cartao-mais-meses .texto { display: flex; flex-direction: column; gap: 2px; }
   .cartao-sabado { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 8px 18px; align-items: start; padding: 20px 22px; }
   .cartao-sabado.passado { opacity: 0.75; }
+  .cartao-sabado.minha { background: var(--verde-claro); border-color: #C9DECD; }
+  .cartao-sabado.pendente { border: 1.5px dashed var(--verde); }
   .cartao-sabado .dia-grande { text-align: center; padding-top: 4px; }
   .cartao-sabado .dia-grande .numero { font-family: var(--fonte-titulo); font-size: 40px; font-weight: 800; line-height: 1; }
   .cartao-sabado .dia-grande .mes { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--texto-suave); margin-top: 4px; }
@@ -10,104 +25,430 @@
   .cartao-sabado .turno .hora { color: var(--texto-suave); font-size: 14px; width: 62px; flex: 0 0 auto; }
   .cartao-sabado .etiqueta button {
     background: none; border: 0; color: inherit; padding: 0 0 0 2px; font-size: 14px; line-height: 1; cursor: pointer; opacity: 0.7;
+    min-width: 24px; min-height: 24px;
   }
   .cartao-sabado .etiqueta button:hover { opacity: 1; }
+  .cartao-sabado .etiqueta.riscado { text-decoration: line-through; opacity: 0.55; }
+  .cartao-sabado .etiqueta.pendente { background: none; border: 1.5px dashed var(--verde); color: var(--verde); padding: 3.5px 10.5px; }
+  .cartao-sabado .etiqueta.treinamento { background: var(--azul-claro); color: var(--azul); }
+  .cartao-sabado .etiqueta.pendente.treinamento { background: none; border-color: var(--azul); }
+  .cartao-sabado .etiqueta button.ativo { opacity: 1; }
+  .cartao-sabado .adicionar {
+    display: inline-flex; align-items: center; min-height: 32px; padding: 3px 12px; border-radius: 999px;
+    border: 1px dashed var(--borda); background: transparent; color: var(--verde); font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .cartao-sabado .adicionar:hover { background: var(--verde-claro); border-color: var(--verde); }
+  .cartao-sabado select.adicionar { padding-right: 8px; max-width: 160px; }
   .cartao-sabado .lado { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
-  .cartao-sabado.bloqueado { grid-template-columns: 72px minmax(0, 1fr); }
+  .cartao-sabado.bloqueado { grid-template-columns: 72px minmax(0, 1fr); background: var(--cinza-medio); border-color: var(--cinza-medio); } /* cinza mesmo que eu esteja no treinamento */
   .cartao-sabado.bloqueado .titulo-bloqueio { font-weight: 700; font-size: 17px; }
   @media (max-width: 700px) {
     .cartao-sabado { grid-template-columns: 56px minmax(0, 1fr); }
     .cartao-sabado .lado { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; }
   }
-  .legenda { display: flex; flex-direction: column; gap: 10px; }
-  .legenda div { display: flex; align-items: center; gap: 10px; color: var(--texto-suave); font-size: 14px; }
-  .painel-confirmar { position: sticky; top: 16px; }
-  .painel-confirmar .subtitulo { color: var(--texto-suave); margin: -6px 0 14px; }
+  .lateral-sabados { position: sticky; top: 16px; align-self: start; display: flex; flex-direction: column; gap: 14px; }
+  .lateral-sabados .cartao + .cartao { margin-top: 0; } /* acompanha a rolagem; o cartão "Mudanças" fica sempre à vista */
+  .painel-mudancas .subtitulo { color: var(--texto-suave); margin: -6px 0 14px; }
+  .painel-mudancas ul { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 0 0 4px; padding: 0; }
+  .painel-mudancas li { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .painel-mudancas li .sinal { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; flex: 0 0 auto; }
+  .painel-mudancas li .sinal.mais { background: var(--verde-claro); color: var(--verde); }
+  .painel-mudancas li .sinal.menos { background: var(--ambar-claro); color: var(--ambar); }
+  .painel-mudancas li { flex-wrap: wrap; }
+  .painel-mudancas li .obs-treinamento {
+    flex: 1 0 100%; width: 100%; box-sizing: border-box; margin: 4px 0 2px; min-height: 38px; padding: 6px 10px;
+    border: 1.5px solid var(--borda); border-radius: 8px; font: inherit; font-size: 14px; background: #fff;
+  }
+  .cartao-sabado .etiqueta.treinamento .nome { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; }
+  .info-treinamento h3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .info-treinamento h3 button { background: none; border: 0; font-size: 18px; cursor: pointer; color: var(--texto-suave); min-width: 32px; min-height: 32px; }
+  .info-treinamento dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; }
+  .info-treinamento dt { color: var(--texto-suave); }
+  .info-treinamento dd { margin: 0; }
 </style>
 <script>
 /**
- * Tela Sábados: um cartão por sábado do mês com turnos, contagem e cobertura por setor.
- * A confirmação da escala acontece no painel lateral (não em janela).
+ * Tela Sábados: um cartão por sábado (do ano ou do mês) com turnos, contagem e cobertura por setor.
+ * O usuário marca várias mudanças (me escalar aqui, sair dali) e salva tudo de uma vez pelo painel lateral.
+ * A tela abre sempre no ano atual.
  */
 (function () {
-  var estado = { mes: '' };
+  var estado = {
+    janelas: [],          // blocos de 12 meses carregados, em ordem: ["2026-09", "2027-09", ...]
+    dados: {},            // janela -> resposta de obterSabados
+    alvo: '',             // "yyyy-MM-dd" para rolar até um sábado (vindo de um aviso do painel)
+    escalar: {},          // chave data|turno|email -> {data, turno, email, nome, treinamento, observacao}
+    cancelar: {}          // id do lançamento -> {data, turno, nome}
+  };
 
   TELAS.sabados = {
     titulo: 'Sábados',
+    descricao: '',
     carregar: function (corpo, acoes) {
-      if (TELAS.sabados.parametros && TELAS.sabados.parametros.mes) estado.mes = TELAS.sabados.parametros.mes;
+      var p = TELAS.sabados.parametros;
+      var mesAtual = hojeIso().substring(0, 7);
+      estado.janelas = [mesAtual];
+      estado.alvo = (p && p.data) || '';
+      // aviso apontando para fora da janela padrão: já carrega os blocos até lá
+      var mesAlvo = (p && p.mes) || '';
+      if (mesAlvo && mesAlvo < mesAtual) {
+        var atras = Math.ceil(diferencaMeses(mesAlvo, mesAtual) / 12);
+        for (var k = 1; k <= atras; k++) estado.janelas.unshift(mesMais(mesAtual, -12 * k));
+      } else if (mesAlvo && diferencaMeses(mesAtual, mesAlvo) > 11) {
+        var frente = Math.floor(diferencaMeses(mesAtual, mesAlvo) / 12);
+        for (var f = 1; f <= frente; f++) estado.janelas.push(mesMais(mesAtual, 12 * f));
+      }
       return carregar(corpo, acoes);
     }
   };
 
-  function nomeMes(iso) {
-    var p = iso.split('-');
-    return MESES_NOME[Number(p[1]) - 1];
-  }
+  function nomeMes(iso) { return MESES_NOME[Number(iso.split('-')[1]) - 1]; }
   function capitalizar(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+  function rotuloTurno(turno) { return turno === '8h-11h' ? '8h–11h' : '9h–12h'; }
+  function chaveEscalar(e) { return e.data + '|' + e.turno + '|' + e.email; }
+  function rotuloData(s) {
+    var d = dataDe(s.data);
+    return 'Sábado, ' + d.getDate() + ' de ' + MESES_NOME[d.getMonth()] + ' de ' + d.getFullYear();
+  }
+  /** "yyyy-MM" deslocado n meses. */
+  function mesMais(iso, n) {
+    var d = new Date(Number(iso.substring(0, 4)), Number(iso.substring(5, 7)) - 1 + n, 1);
+    return isoDe(d).substring(0, 7);
+  }
+  function diferencaMeses(de, ate) {
+    return (Number(ate.substring(0, 4)) - Number(de.substring(0, 4))) * 12 + (Number(ate.substring(5, 7)) - Number(de.substring(5, 7)));
+  }
+  /** "set/2026 a ago/2027" */
+  function rotuloJanela(inicio) {
+    var f = mesMais(inicio, 11);
+    return MESES_CURTO[Number(inicio.substring(5, 7)) - 1] + '/' + inicio.substring(0, 4) + ' a ' +
+      MESES_CURTO[Number(f.substring(5, 7)) - 1] + '/' + f.substring(0, 4);
+  }
 
+  var pedido = 0;
+  var ultimoDesenhado = null;
+
+  /** Busca todas as janelas (as já vistas vêm da resposta guardada) e desenha quando todas estiverem prontas. */
   function carregar(corpo, acoes) {
-    corpo.innerHTML = '<div class="carregando">Carregando…</div>';
-    return api('obterSabados', estado.mes).then(function (d) {
-      estado.mes = d.mes;
-      atualizarCabecalho({
-        titulo: 'Sábados de ' + nomeMes(d.mes),
-        descricao: 'De ' + d.minimo + ' a ' + d.maximo + ' pessoas por sábado, somando os dois turnos, com pelo menos 1 pessoa de cada setor.'
-      });
-      acoes.innerHTML =
-        '<div class="navegacao-periodo">' +
-          '<button type="button" class="botao neutro" data-ir="' + esc(d.anterior) + '">‹ ' + esc(capitalizar(nomeMes(d.anterior))) + '</button>' +
-          '<button type="button" class="botao neutro" data-ir="' + esc(d.proximo) + '">' + esc(capitalizar(nomeMes(d.proximo))) + ' ›</button>' +
-        '</div>';
-      acoes.querySelectorAll('[data-ir]').forEach(function (b) {
-        b.addEventListener('click', function () { estado.mes = b.dataset.ir; carregar(corpo, acoes); });
-      });
-
-      corpo.innerHTML = '';
-      var grade = el('<div class="com-lateral"></div>');
-      var lista = el('<div class="lista-sabados"></div>');
-      if (!d.sabados.length) lista.innerHTML = '<div class="cartao"><p class="vazio">Nenhum sábado neste mês.</p></div>';
-      var lateral = el('<div></div>');
-      var painel = el('<div class="cartao painel-confirmar oculto"></div>');
-      lateral.appendChild(painel);
-      lateral.appendChild(resumoAno(d));
-      lateral.appendChild(legenda());
-
-      var ctx = { d: d, corpo: corpo, acoes: acoes, painel: painel };
-      d.sabados.forEach(function (s) { lista.appendChild(cartao(s, ctx)); });
-      grade.appendChild(lista);
-      grade.appendChild(lateral);
-      corpo.appendChild(grade);
+    var meuPedido = ++pedido;
+    var desenhou = false;
+    var tentarDesenhar = function () {
+      if (meuPedido !== pedido || !corpo.isConnected) return;
+      var completo = estado.janelas.every(function (j) { return estado.dados[j]; });
+      if (!completo) return;
+      var d = mesclar();
+      var texto = JSON.stringify(d);
+      if (desenhou && texto === ultimoDesenhado) return;
+      desenhou = true;
+      ultimoDesenhado = texto;
+      desenhar(corpo, acoes, d);
+    };
+    var promessas = estado.janelas.map(function (j) {
+      return apiGuardada('obterSabados', [j], function (d) { estado.dados[j] = d; tentarDesenhar(); });
+    });
+    if (!desenhou) corpo.innerHTML = '<div class="carregando">Carregando…</div>';
+    return Promise.all(promessas).catch(function (erro) {
+      if (meuPedido === pedido && !desenhou) corpo.innerHTML = '';
+      mostrarErro(erro);
     });
   }
 
-  function etiquetaPessoa(p, s, ctx) {
+  /** Junta as janelas carregadas numa resposta só (sábados em ordem). */
+  function mesclar() {
+    var primeira = estado.dados[estado.janelas[0]];
+    var sabados = [];
+    estado.janelas.forEach(function (j) { sabados = sabados.concat(estado.dados[j].sabados); });
+    return {
+      sabados: sabados,
+      mesAtual: primeira.mesAtual,
+      janelaAnterior: estado.dados[estado.janelas[0]].anterior,
+      janelaSeguinte: estado.dados[estado.janelas[estado.janelas.length - 1]].proximo,
+      meusNoAno: primeira.meusNoAno,
+      minimo: primeira.minimo,
+      maximo: primeira.maximo,
+      souGestor: primeira.souGestor,
+      pessoas: primeira.pessoas
+    };
+  }
+
+  function desenhar(corpo, acoes, d) {
+    atualizarCabecalho({
+      titulo: 'Sábados',
+      descricao: 'De ' + d.minimo + ' a ' + d.maximo + ' pessoas por sábado, somando os dois turnos, com pelo menos 1 pessoa de cada setor.'
+    });
+    acoes.innerHTML = '';
+
+    corpo.innerHTML = '';
+    var grade = el('<div class="com-lateral"></div>');
+    var lista = el('<div class="lista-sabados"></div>');
+
+    var lateral = el('<div class="lateral-sabados"></div>');
+    var irHoje = el('<button type="button" class="botao neutro largo">Ir para o mês atual</button>');
+    irHoje.addEventListener('click', function () {
+      var alvo = corpo.querySelector('[data-mes="' + d.mesAtual + '"]');
+      if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    lateral.appendChild(irHoje);
+    var painel = el('<div class="cartao painel-mudancas oculto"></div>');
+    lateral.appendChild(painel);
+    lateral.appendChild(resumoAno(d));
+    var info = el('<div class="cartao info-treinamento oculto"></div>');
+    lateral.appendChild(info);
+
+    var ctx = { d: d, corpo: corpo, acoes: acoes, painel: painel, lista: lista, info: info };
+
+    lista.appendChild(cartaoMaisMeses('anteriores', d.janelaAnterior, ctx));
+    var mesAnterior = '';
+    d.sabados.forEach(function (s) {
+      var mes = s.data.substring(0, 7);
+      if (mes !== mesAnterior) {
+        lista.appendChild(el('<h3 class="separador-mes" data-mes="' + mes + '">' + esc(capitalizar(MESES_NOME[s.mes]) + ' de ' + s.ano) + '</h3>'));
+        mesAnterior = mes;
+      }
+      lista.appendChild(cartao(s, ctx));
+    });
+    lista.appendChild(cartaoMaisMeses('seguintes', d.janelaSeguinte, ctx));
+
+    grade.appendChild(lista);
+    grade.appendChild(lateral);
+    corpo.appendChild(grade);
+    desenharPainel(ctx);
+
+    if (estado.alvo) {
+      var alvo = corpo.querySelector('[data-data="' + estado.alvo + '"]');
+      estado.alvo = '';
+      if (alvo) setTimeout(function () { alvo.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
+    }
+  }
+
+  /** Cartão "Meses anteriores" (topo) ou "Próximos meses" (fim): carrega mais 12 meses. */
+  function cartaoMaisMeses(qual, janela, ctx) {
+    var anteriores = qual === 'anteriores';
+    var c = el('<button type="button" class="cartao cartao-mais-meses">' +
+      '<span class="seta" aria-hidden="true">' + (anteriores ? '▲' : '▼') + '</span>' +
+      '<span class="texto"><strong>' + (anteriores ? 'Meses anteriores' : 'Próximos meses') + '</strong>' +
+      '<span class="nota">Ver ' + esc(rotuloJanela(janela)) + '</span></span></button>');
+    c.addEventListener('click', function () {
+      c.disabled = true;
+      c.querySelector('.nota').textContent = 'Carregando…';
+      if (anteriores) estado.janelas.unshift(janela); else estado.janelas.push(janela);
+      carregar(ctx.corpo, ctx.acoes);
+    });
+    return c;
+  }
+
+  // ---------- Mudanças pendentes ----------
+
+  function alternarEscalar(s, turno, email, nome, ctx) {
+    var e = { data: s.data, turno: turno, email: email, nome: nome, treinamento: false, observacao: '' };
+    var chave = chaveEscalar(e);
+    if (estado.escalar[chave]) delete estado.escalar[chave];
+    else estado.escalar[chave] = e;
+    redesenharCartao(s, ctx);
+  }
+
+  /** Marca/desmarca "em treinamento" numa escala pendente (a pessoa vai, mas não atende). */
+  function alternarTreinamento(e, s, ctx) {
+    e.treinamento = !e.treinamento;
+    redesenharCartao(s, ctx);
+  }
+
+  function alternarCancelar(p, s, turno, ctx) {
+    if (estado.cancelar[p.id]) delete estado.cancelar[p.id];
+    else estado.cancelar[p.id] = { data: s.data, turno: turno, nome: p.minha ? 'Você' : p.nome };
+    redesenharCartao(s, ctx);
+  }
+
+  function redesenharCartao(s, ctx) {
+    var atual = ctx.lista.querySelector('[data-data="' + s.data + '"]');
+    if (atual) atual.replaceWith(cartao(s, ctx));
+    desenharPainel(ctx);
+  }
+
+  function pendentesDoTurno(s, turno) {
+    return Object.keys(estado.escalar).map(function (k) { return estado.escalar[k]; })
+      .filter(function (e) { return e.data === s.data && e.turno === turno; });
+  }
+  function temPendencia(s) {
+    var k;
+    for (k in estado.escalar) if (estado.escalar[k].data === s.data) return true;
+    for (k in estado.cancelar) if (estado.cancelar[k].data === s.data) return true;
+    return false;
+  }
+
+  /** Painel lateral com a lista de mudanças e o botão de salvar tudo. */
+  function desenharPainel(ctx) {
+    var painel = ctx.painel;
+    var itens = [];
+    Object.keys(estado.escalar).forEach(function (k) { var e = estado.escalar[k]; itens.push({ sinal: 'mais', chave: k, data: e.data, turno: e.turno, nome: e.nome, treinamento: e.treinamento, observacao: e.observacao }); });
+    Object.keys(estado.cancelar).forEach(function (k) { var c = estado.cancelar[k]; itens.push({ sinal: 'menos', data: c.data, turno: c.turno, nome: c.nome }); });
+    if (!itens.length) { painel.classList.add('oculto'); painel.innerHTML = ''; return; }
+    itens.sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : a.sinal === 'menos' ? -1 : 1; });
+
+    var nEsc = Object.keys(estado.escalar).length, nCan = Object.keys(estado.cancelar).length;
+    var resumo = [];
+    if (nEsc) resumo.push(nEsc + (nEsc === 1 ? ' escala para salvar' : ' escalas para salvar'));
+    if (nCan) resumo.push(nCan + (nCan === 1 ? ' para tirar' : ' para tirar'));
+
+    painel.classList.remove('oculto');
+    painel.innerHTML =
+      '<h2>Mudanças</h2><p class="subtitulo">' + esc(resumo.join(' · ')) + '</p>' +
+      '<ul>' + itens.map(function (i) {
+        return '<li><span class="sinal ' + i.sinal + '">' + (i.sinal === 'mais' ? '+' : '−') + '</span>' +
+          '<span>' + esc(i.data.substring(8, 10) + '/' + i.data.substring(5, 7)) + ' · ' + esc(rotuloTurno(i.turno)) + ' · ' + esc(i.nome) + (i.treinamento ? ' · treinamento' : '') + '</span>' +
+          (i.treinamento
+            ? '<input type="text" class="obs-treinamento" data-chave="' + esc(i.chave) + '" maxlength="200" placeholder="Qual treinamento? (opcional)" aria-label="Descrição do treinamento" value="' + esc(i.observacao || '') + '">'
+            : '') +
+          '</li>';
+      }).join('') + '</ul>' +
+      '<p class="nota">Nada é gravado até você confirmar. Use 🎓 na etiqueta para marcar que a pessoa estará em treinamento específico.</p>' +
+      '<div class="acoes"><button type="button" class="botao neutro" data-acao="limpar">Limpar</button>' +
+      '<button type="button" class="botao escuro" data-acao="salvar">Confirmar (' + itens.length + ')</button></div>';
+
+    painel.querySelectorAll('.obs-treinamento').forEach(function (campo) {
+      campo.addEventListener('input', function () {
+        var e = estado.escalar[campo.dataset.chave];
+        if (e) e.observacao = campo.value;
+      });
+    });
+    painel.querySelector('[data-acao="limpar"]').addEventListener('click', function () {
+      estado.escalar = {}; estado.cancelar = {};
+      desenhar(ctx.corpo, ctx.acoes, ctx.d);
+    });
+    painel.querySelector('[data-acao="salvar"]').addEventListener('click', function () { salvar(ctx); });
+  }
+
+  function salvar(ctx) {
+    var painel = ctx.painel;
+    var dados = {
+      escalar: Object.keys(estado.escalar).map(function (k) {
+        var e = estado.escalar[k];
+        var item = { data: e.data, turno: e.turno };
+        if (e.email !== USUARIO.email) item.email = e.email;
+        if (e.treinamento) { item.treinamento = true; item.observacao = e.observacao || ''; }
+        return item;
+      }),
+      cancelar: Object.keys(estado.cancelar)
+    };
+    painel.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+    chamarComConfirmacao('salvarSabados', dados, {
+      painel: painel, textoBotao: 'Salvar mesmo assim', titulo: 'Confirmar escalas',
+      subtitulo: 'Os avisos abaixo valem para as mudanças que você marcou.'
+    }).then(function (r) {
+      if (!r) { desenharPainel(ctx); return; } // cancelou na janela de avisos: mantém as marcações
+      estado.escalar = {}; estado.cancelar = {};
+      var partes = [];
+      if (r.escalados) partes.push(r.escalados === 1 ? '1 escala salva' : r.escalados + ' escalas salvas');
+      if (r.cancelados) partes.push(r.cancelados === 1 ? '1 retirada' : r.cancelados + ' retiradas');
+      toast(partes.join(' e ') + (r.avisosIgnorados ? ' (com aviso registrado)' : '') + '.');
+      carregar(ctx.corpo, ctx.acoes);
+    }).catch(function (e) { desenharPainel(ctx); mostrarErro(e); });
+  }
+
+  // ---------- Cartões ----------
+
+  function etiquetaPessoa(p, s, turno, ctx) {
     var podeTirar = p.minha || ctx.d.souGestor;
-    var e = el('<span class="etiqueta ' + (p.minha ? 'cheia' : 'cinza') + '">' + esc(p.nome) +
-      (podeTirar ? '<button type="button" aria-label="Tirar ' + esc(p.nome) + ' da escala" title="Tirar da escala">✕</button>' : '') + '</span>');
-    if (podeTirar) e.querySelector('button').addEventListener('click', function () { cancelar(p, s, ctx); });
+    var riscado = !!estado.cancelar[p.id];
+    var classe = p.treinamento ? 'treinamento' : (p.minha ? 'cheia' : 'cinza');
+    var nome = p.minha ? 'Você' : p.nome;
+    var texto = p.treinamento
+      ? '<button type="button" class="nome" title="Ver informações do treinamento">' + esc(nome) + ' · treinamento</button>'
+      : esc(nome);
+    var dica = !p.treinamento && p.observacao ? ' title="' + esc(p.observacao) + '"' : '';
+    var podeTrocar = p.minha && !p.treinamento && !riscado && !p.trocaPendente && !s.passado;
+    var e = el('<span class="etiqueta ' + classe + (riscado ? ' riscado' : '') + '"' + dica + '>' + texto +
+      (p.trocaPendente ? '<span title="Troca pendente" aria-label="troca pendente"> ⇄</span>' : '') +
+      (podeTrocar ? '<button type="button" data-acao="trocar" aria-label="Propor troca deste sábado" title="Propor troca">⇄</button>' : '') +
+      (podeTirar ? '<button type="button" data-acao="tirar" aria-label="' + (riscado ? 'Desfazer' : 'Tirar ' + esc(p.nome) + ' da escala') + '" title="' + (riscado ? 'Desfazer' : 'Tirar da escala') + '">' + (riscado ? '↶' : '✕') + '</button>' : '') + '</span>');
+    if (podeTrocar) e.querySelector('[data-acao="trocar"]').addEventListener('click', function () { abrirPropostaTroca(p.id, function () { carregar(ctx.corpo, ctx.acoes); }); });
+    if (podeTirar) e.querySelector('[data-acao="tirar"]').addEventListener('click', function () { alternarCancelar(p, s, turno, ctx); });
+    if (p.treinamento) e.querySelector('.nome').addEventListener('click', function () { mostrarInfoTreinamento(p, s, turno, ctx); });
     return e;
   }
 
-  function turno(hora, pessoas, s, ctx) {
+  /** Cartão lateral "Informações do treinamento" para uma pessoa em treinamento num sábado. */
+  function mostrarInfoTreinamento(p, s, turno, ctx) {
+    var info = ctx.info;
+    info.classList.remove('oculto');
+    info.innerHTML =
+      '<h3>Informações do treinamento<button type="button" aria-label="Fechar" title="Fechar">✕</button></h3>' +
+      '<dl>' +
+        '<dt>Pessoa</dt><dd>' + esc(p.nome) + '</dd>' +
+        '<dt>Sábado</dt><dd>' + esc(rotuloData(s)) + '</dd>' +
+        '<dt>Turno</dt><dd>' + esc(turno ? rotuloTurno(turno) : 'sem turno') + '</dd>' +
+        '<dt>Sobre</dt><dd>' + (p.observacao ? esc(p.observacao) : '<span class="vazio">Sem descrição.</span>') + '</dd>' +
+      '</dl>';
+    info.querySelector('button').addEventListener('click', function () { info.classList.add('oculto'); info.innerHTML = ''; });
+    info.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function etiquetaPendente(e, s, ctx) {
+    var nome = e.email === USUARIO.email ? 'Você' : e.nome;
+    var t = el('<span class="etiqueta pendente' + (e.treinamento ? ' treinamento' : '') + '">' + esc(nome) + (e.treinamento ? ' · treinamento' : '') +
+      '<button type="button" data-acao="treinamento" class="' + (e.treinamento ? 'ativo' : '') + '" aria-pressed="' + e.treinamento + '" aria-label="Em treinamento (não atende)" title="' + (e.treinamento ? 'Desmarcar treinamento' : 'Marcar: estará em treinamento, não atende') + '">🎓</button>' +
+      '<button type="button" data-acao="desfazer" aria-label="Desfazer" title="Desfazer">✕</button></span>');
+    t.querySelector('[data-acao="treinamento"]').addEventListener('click', function () { alternarTreinamento(e, s, ctx); });
+    t.querySelector('[data-acao="desfazer"]').addEventListener('click', function () { alternarEscalar(s, e.turno, e.email, e.nome, ctx); });
+    return t;
+  }
+
+  /** Botão "+ Me escalar" (ou, para gestor, lista de pessoas) de um turno. */
+  function controleAdicionar(s, turno, pessoas, ctx) {
+    var pendentes = pendentesDoTurno(s, turno);
+    var jaNoTurno = function (email) {
+      return pessoas.some(function (p) { return p.email === email && !estado.cancelar[p.id]; }) ||
+        pendentes.some(function (e) { return e.email === email; });
+    };
+    if (!ctx.d.souGestor) {
+      if (jaNoTurno(USUARIO.email)) return null;
+      var b = el('<button type="button" class="adicionar">+ Me escalar</button>');
+      b.addEventListener('click', function () { alternarEscalar(s, turno, USUARIO.email, USUARIO.nomeExibicao, ctx); });
+      return b;
+    }
+    var opcoes = ctx.d.pessoas.filter(function (p) { return !jaNoTurno(p.email); });
+    if (!opcoes.length) return null;
+    var sel = el('<select class="adicionar" aria-label="Escalar pessoa no turno ' + esc(rotuloTurno(turno)) + '"><option value="">+ Escalar…</option>' +
+      opcoes.map(function (p) { return '<option value="' + esc(p.email) + '">' + esc(p.email === USUARIO.email ? 'Eu (' + p.nome + ')' : p.nome) + '</option>'; }).join('') +
+      '</select>');
+    sel.addEventListener('change', function () {
+      var p = opcoes.filter(function (x) { return x.email === sel.value; })[0];
+      if (p) alternarEscalar(s, turno, p.email, p.nome, ctx);
+    });
+    return sel;
+  }
+
+  /** pessoas = quem aparece; todas (opcional) = quem já está no turno, para o botão de escalar não repetir. */
+  function linhaTurno(hora, turno, pessoas, s, ctx, todas) {
     var t = el('<div class="turno"><span class="hora">' + esc(hora) + '</span><div class="etiquetas"></div></div>');
     var cont = t.querySelector('.etiquetas');
-    if (!pessoas.length) cont.innerHTML = '<span class="vazio">Ninguém ainda</span>';
-    pessoas.forEach(function (p) { cont.appendChild(etiquetaPessoa(p, s, ctx)); });
+    pessoas.forEach(function (p) { cont.appendChild(etiquetaPessoa(p, s, turno, ctx)); });
+    pendentesDoTurno(s, turno).forEach(function (e) { cont.appendChild(etiquetaPendente(e, s, ctx)); });
+    var add = controleAdicionar(s, turno, todas || pessoas, ctx);
+    if (add) cont.appendChild(add);
+    if (!cont.children.length) cont.innerHTML = '<span class="vazio">Ninguém ainda</span>';
     return t;
   }
 
   function cartao(s, ctx) {
     var mesCurto = MESES_CURTO[Number(s.data.split('-')[1]) - 1];
     var diaGrande = '<div class="dia-grande"><div class="numero">' + ('0' + s.dia).slice(-2) + '</div><div class="mes">' + mesCurto + '</div></div>';
+    var classes = ['cartao', 'cartao-sabado'];
+    if (s.passado) classes.push('passado');
+    if (temPendencia(s)) classes.push('pendente');
+    if (s.bloqueado) return bloqueadoComEscalados(s, ctx, diaGrande, classes);
+    if (s.minha) classes.push('minha');
 
-    if (s.bloqueado) return bloqueadoComEscalados(s, ctx, diaGrande);
-
-    var c = el('<div class="cartao cartao-sabado' + (s.problema ? ' problema' : '') + (s.passado ? ' passado' : '') + '">' + diaGrande + '</div>');
+    if (s.problema) classes.push('problema');
+    var c = el('<div class="' + classes.join(' ') + '" data-data="' + esc(s.data) + '">' + diaGrande + '</div>');
     var linhas = el('<div class="linhas"></div>');
-    linhas.appendChild(turno('8h–11h', s.turnos.t8, s, ctx));
-    linhas.appendChild(turno('9h–12h', s.turnos.t9, s, ctx));
-    if (s.turnos.semTurno.length) linhas.appendChild(turno('Sem turno', s.turnos.semTurno, s, ctx));
+    linhas.appendChild(linhaTurno('8h–11h', '8h-11h', s.turnos.t8, s, ctx));
+    linhas.appendChild(linhaTurno('9h–12h', '9h-12h', s.turnos.t9, s, ctx));
+    if (s.turnos.semTurno.length) {
+      var semTurno = el('<div class="turno"><span class="hora">Sem turno</span><div class="etiquetas"></div></div>');
+      s.turnos.semTurno.forEach(function (p) { semTurno.querySelector('.etiquetas').appendChild(etiquetaPessoa(p, s, '', ctx)); });
+      linhas.appendChild(semTurno);
+    }
     var setores = el('<div class="etiquetas"></div>');
     s.setores.forEach(function (st) {
       setores.appendChild(el('<span class="etiqueta ' + (st.coberto ? '' : 'contorno') + '" title="' + (st.coberto ? 'setor coberto' : 'sem ninguém: gera aviso') + '">' + esc(capitalizar(st.nome.toLowerCase())) + '</span>'));
@@ -117,101 +458,30 @@
 
     var lado = el('<div class="lado"></div>');
     lado.appendChild(el('<span class="etiqueta pilula ' + (s.contagemOk ? '' : 'ambar') + '">' + esc(s.contagemTexto) + '</span>'));
-    if (!s.minhaEscala) {
-      var b = el('<button type="button" class="botao contorno pequeno">Me escalar</button>');
-      b.addEventListener('click', function () { abrirConfirmacao(s, ctx, false); });
-      lado.appendChild(b);
-    }
-    if (ctx.d.souGestor) {
-      var g = el('<button type="button" class="botao discreto pequeno">Escalar outra pessoa</button>');
-      g.addEventListener('click', function () { abrirConfirmacao(s, ctx, true); });
-      lado.appendChild(g);
-    }
     c.appendChild(lado);
     return c;
   }
 
-  /** Cartão bloqueado (treinamento/feriado), ainda listando quem se escalou mesmo assim. */
-  function bloqueadoComEscalados(s, ctx, diaGrande) {
-    var c = el('<div class="cartao cartao-sabado bloqueado' + (s.passado ? ' passado' : '') + '">' + diaGrande + '<div></div></div>');
+  /**
+   * Cartão bloqueado (treinamento da equipe / feriado). Quem está "em treinamento" não é listado
+   * (é a equipe inteira); aparece só quem se escalou para atender mesmo assim, e o botão para se escalar.
+   */
+  function bloqueadoComEscalados(s, ctx, diaGrande, classes) {
+    classes.push('bloqueado');
+    var atendendo = function (lista) { return lista.filter(function (p) { return !p.treinamento; }); };
+    var c = el('<div class="' + classes.join(' ') + '" data-data="' + esc(s.data) + '">' + diaGrande + '<div></div></div>');
     var corpo = c.lastElementChild;
     corpo.innerHTML = '<div class="titulo-bloqueio">' + esc(s.bloqueios.join('; ')) + '</div><div class="nota">Escalas neste dia geram aviso.</div>';
-    var todos = s.turnos.t8.concat(s.turnos.t9, s.turnos.semTurno);
-    if (todos.length) {
-      var e = el('<div class="etiquetas" style="margin-top:10px"></div>');
-      todos.forEach(function (p) { e.appendChild(etiquetaPessoa(p, s, ctx)); });
-      corpo.appendChild(e);
+    var linhas = el('<div class="linhas" style="margin-top:10px"></div>');
+    linhas.appendChild(linhaTurno('8h–11h', '8h-11h', atendendo(s.turnos.t8), s, ctx, s.turnos.t8));
+    linhas.appendChild(linhaTurno('9h–12h', '9h-12h', atendendo(s.turnos.t9), s, ctx, s.turnos.t9));
+    if (s.turnos.semTurno.length) {
+      var semTurno = el('<div class="turno"><span class="hora">Sem turno</span><div class="etiquetas"></div></div>');
+      s.turnos.semTurno.forEach(function (p) { semTurno.querySelector('.etiquetas').appendChild(etiquetaPessoa(p, s, '', ctx)); });
+      linhas.appendChild(semTurno);
     }
-    if (!s.minhaEscala) {
-      var b = el('<div style="margin-top:12px"><button type="button" class="botao neutro pequeno">Me escalar</button></div>');
-      b.querySelector('button').addEventListener('click', function () { abrirConfirmacao(s, ctx, false); });
-      corpo.appendChild(b);
-    }
+    corpo.appendChild(linhas);
     return c;
-  }
-
-  function rotuloData(s) {
-    var d = dataDe(s.data);
-    return 'Sábado, ' + d.getDate() + ' de ' + MESES_NOME[d.getMonth()];
-  }
-
-  /** Painel lateral: escolha do turno (e pessoa, se gestor) → confirmação com avisos. */
-  function abrirConfirmacao(s, ctx, outraPessoa) {
-    var painel = ctx.painel;
-    painel.classList.remove('oculto');
-    painel.innerHTML =
-      '<h2>Confirmar escala</h2>' +
-      '<p class="subtitulo">' + esc(rotuloData(s)) + '</p>' +
-      (outraPessoa
-        ? '<label class="campo">Pessoa<select id="escPessoa">' +
-            ctx.d.pessoas.map(function (p) { return '<option value="' + esc(p.email) + '">' + esc(p.nome) + '</option>'; }).join('') +
-          '</select></label>'
-        : '') +
-      '<div style="margin-top:8px">' +
-        '<label class="opcao"><input type="radio" name="turno" value="8h-11h" checked><span class="texto"><strong>8h às 11h</strong><span>' + s.turnos.t8.length + ' pessoa(s) neste turno</span></span></label>' +
-        '<label class="opcao"><input type="radio" name="turno" value="9h-12h"><span class="texto"><strong>9h às 12h</strong><span>' + s.turnos.t9.length + ' pessoa(s) neste turno</span></span></label>' +
-      '</div>' +
-      '<div class="acoes"><button type="button" class="botao neutro" data-acao="cancelar">Cancelar</button>' +
-      '<button type="button" class="botao escuro" data-acao="salvar">Confirmar</button></div>';
-    painel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    painel.querySelector('[data-acao="cancelar"]').addEventListener('click', function () { painel.classList.add('oculto'); painel.innerHTML = ''; });
-    painel.querySelector('[data-acao="salvar"]').addEventListener('click', function () {
-      var turno = painel.querySelector('input[name="turno"]:checked').value;
-      var dados = { data: s.data, turno: turno };
-      if (outraPessoa) dados.email = painel.querySelector('#escPessoa').value;
-      painel.querySelector('[data-acao="salvar"]').disabled = true;
-      chamarComConfirmacao('escalarSabado', dados, {
-        painel: painel, textoBotao: 'Salvar mesmo assim', titulo: 'Confirmar escala',
-        subtitulo: rotuloData(s) + ' · ' + (turno === '8h-11h' ? '8h às 11h' : '9h às 12h')
-      }).then(function (r) {
-        painel.classList.add('oculto'); painel.innerHTML = '';
-        if (!r) return;
-        toast('Escala salva' + (r.avisosIgnorados ? ' (com aviso registrado)' : '') + '.');
-        carregar(ctx.corpo, ctx.acoes);
-        atualizarContadorAvisos();
-      }).catch(function (e) { painel.classList.add('oculto'); painel.innerHTML = ''; mostrarErro(e); });
-    });
-  }
-
-  function cancelar(p, s, ctx) {
-    var painel = ctx.painel;
-    var quem = p.minha ? 'Sair da escala?' : 'Tirar ' + p.nome + ' da escala?';
-    painel.classList.remove('oculto');
-    painel.innerHTML = '<h2>' + esc(quem) + '</h2><p class="subtitulo">' + esc(rotuloData(s)) + '</p>' +
-      '<div class="acoes"><button type="button" class="botao neutro" data-acao="nao">Voltar</button>' +
-      '<button type="button" class="botao escuro" data-acao="sim">Confirmar</button></div>';
-    painel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    painel.querySelector('[data-acao="nao"]').addEventListener('click', function () { painel.classList.add('oculto'); painel.innerHTML = ''; });
-    painel.querySelector('[data-acao="sim"]').addEventListener('click', function () {
-      chamarComConfirmacao('cancelarSabado', p.id, { painel: painel, textoBotao: 'Tirar mesmo assim', titulo: quem, subtitulo: rotuloData(s) })
-        .then(function (r) {
-          painel.classList.add('oculto'); painel.innerHTML = '';
-          if (!r) return;
-          toast('Escala cancelada.');
-          carregar(ctx.corpo, ctx.acoes);
-          atualizarContadorAvisos();
-        }).catch(function (e) { painel.classList.add('oculto'); painel.innerHTML = ''; mostrarErro(e); });
-    });
   }
 
   function resumoAno(d) {
@@ -222,13 +492,6 @@
     return el('<div class="cartao"><h3>Seus sábados em ' + m.ano + '</h3>' +
       '<div class="numero-grande">' + m.total + '</div>' +
       '<p class="nota" style="margin-top:10px">' + esc(detalhe.join(' · ')) + '</p></div>');
-  }
-
-  function legenda() {
-    return el('<div class="cartao"><h3>Legenda dos setores</h3><div class="legenda">' +
-      '<div><span class="etiqueta">Emissão</span> setor coberto</div>' +
-      '<div><span class="etiqueta contorno">Contabilidade</span> sem ninguém: gera aviso</div>' +
-      '</div></div>');
   }
 })();
 </script>

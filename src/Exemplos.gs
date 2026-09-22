@@ -65,5 +65,6 @@ function apagarLinhasOnde_(nomeAba, coluna, contem) {
     .map(function (l) { return l._linha; })
     .sort(function (a, b) { return b - a; }); // de baixo para cima para não deslocar índices
   linhas.forEach(function (n) { aba.deleteRow(n); });
+  esquecerAba_(nomeAba);
   return linhas.length;
 }

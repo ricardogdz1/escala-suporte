@@ -19,18 +19,21 @@ Status: ⬜ não iniciado · 🟨 em andamento · ✅ concluído
 - [x] Importação da planilha antiga a partir de 01/01/2026 (`Importacao.gs`, abas MapaNomes e RelatorioImportacao)
 - Implantação de teste: `/dev` (ID AKfycbwpbaraP0mGgUvwlkX-QVvGVny53IWoGJ9wiQGobQ)
 
-## Fase 2 – Sábados e Home office ⬜
-- Sábados com turnos, contagem, cobertura por setor e avisos
-- Home office com reserva (LockService), fila por setor, pular, vez guardada, semanas presenciais
+## Fase 2 – Sábados e Home office ✅ (21/09/2026)
+- [x] Sábados com turnos, contagem, cobertura por setor e avisos (`Sabados.gs`, `TelaSabados.html`)
+- [x] Home office com reserva (LockService), fila por setor, pular, vez guardada, semanas presenciais (`HomeOffice.gs`, `TelaHomeOffice.html`)
 
-## Fase 3 – Meio-dia e plantão ⬜
-- Grade semanal com vagas, copiar semana anterior, feriados, relatório de plantões
+## Fase 3 – Meio-dia e plantão ✅ (21/09/2026)
+- [x] Duas abas (Meio-dia e Plantão) com cartões por semana, seleção em lote, copiar semana anterior, feriados, relatório do mês (`Semanal.gs`, `TelaSemanal.html`)
+- [x] Plantão de sábado 13h–17h (`VAGAS_PLANTAO_SABADO`); painel mostra plantão no sábado
+- [x] Testado no /dev pelo usuário
 
-## Fase 4 – Trocas ⬜
-- Proposta, aceite por e-mail/app, atualização e aviso ao gestor
+## Fase 4 – Trocas ✅ (21/09/2026)
+- [x] Propor (⇄ nas telas), aceitar/recusar/cancelar no Painel, avisos dos dois lados, agenda refeita, e-mails para colega e gestor (`Trocas.gs`)
 
-## Fase 5 – Férias ⬜
-- Saldo, fluxo de aprovação, linha do tempo, avisos, coletivas
+## Fase 5 – Férias 🟨 (21/09/2026)
+- [x] Saldo, rascunho/solicitar/aprovar/devolver/encaminhar, linha do tempo da equipe com sobreposições e coletivas, avisos (CLT desligada até o RH confirmar), e-mails, evento na agenda ao aprovar (`Ferias.gs`, `TelaFerias.html`)
+- [ ] Testar no /dev e ajustar
 
 ## Fase 6 – Google Agenda ⬜
 - Calendário compartilhado "Escala Suporte" (convidando a pessoa)

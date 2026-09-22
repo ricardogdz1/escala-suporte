@@ -1,0 +1,390 @@
+<style>
+  .ferias-topo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 800px) { .ferias-topo { grid-template-columns: 1fr; } }
+  .ferias-topo .cartao { margin-top: 0; }
+  .saldo .numero-grande small { font-size: 16px; font-weight: 500; color: var(--texto-suave); }
+  .periodos-lista { display: flex; flex-direction: column; gap: 8px; }
+  .periodo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 10px; }
+  .periodo .datas { font-weight: 600; }
+  .periodo .dias { color: var(--texto-suave); font-size: 14px; }
+  .periodo .obs { flex: 1 0 100%; font-size: 13px; color: var(--texto-suave); }
+  .periodo .acoes-periodo { margin-left: auto; display: flex; gap: 4px; }
+  .periodo .acoes-periodo button { background: none; border: 0; color: var(--verde); font: inherit; font-size: 14px; cursor: pointer; padding: 4px 8px; min-height: 32px; border-radius: 6px; }
+  .periodo .acoes-periodo button:hover { background: var(--verde-claro); }
+  .periodo .acoes-periodo button.perigo { color: var(--ambar); }
+  .periodo.passada { opacity: 0.7; }
+  .etiqueta.status-rascunho { background: var(--cinza-claro); color: var(--texto-suave); }
+  .etiqueta.status-solicitada { background: var(--ambar-claro); color: var(--ambar); }
+  .etiqueta.status-aprovada { background: var(--azul-claro); color: var(--azul); }
+  .etiqueta.status-encaminhada { background: var(--verde-claro); color: var(--verde); }
+  .etiqueta.status-devolvida { background: none; border: 1.5px dashed var(--ambar); color: var(--ambar); padding: 3.5px 10.5px; }
+  .mes-ferias { margin-top: 14px; border: 1px solid var(--borda); border-radius: 10px; overflow: hidden; }
+  .mes-ferias header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 10px 14px; background: var(--cinza-claro); border-bottom: 1px solid var(--borda); }
+  .mes-ferias header h3 { margin: 0; font-size: 16px; }
+  .mes-ferias .grade-mes, .mes-ferias .periodos-lista { padding: 10px 14px; }
+  .mes-ferias .periodos-lista { padding-top: 0; }
+  .grade-mes { overflow-x: auto; margin-bottom: 0; }
+  .grade-mes table { border-collapse: separate; border-spacing: 2px; font-size: 11px; }
+  .grade-mes th, .grade-mes td { width: 20px; min-width: 20px; height: 22px; text-align: center; padding: 0; border-radius: 4px; box-sizing: border-box; }
+  .grade-mes th { font-weight: 600; color: var(--texto-suave); line-height: 1.1; vertical-align: bottom; }
+  .grade-mes th .ds { display: block; font-size: 9px; font-weight: 400; opacity: 0.8; }
+  .grade-mes th.fds, .grade-mes td.fds { background: var(--cinza-claro); }
+  .grade-mes th.feriado { color: var(--ambar); font-weight: 700; }
+  .grade-mes th.hoje { color: var(--verde); font-weight: 800; }
+  .grade-mes th.coletiva, .grade-mes td.coletiva { background: var(--cinza-medio); }
+  .grade-mes .nome { width: 110px; min-width: 110px; text-align: left; font-size: 13px; font-weight: 600; padding-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 0; background: none; }
+  .grade-mes td.ferias.ok { background: var(--verde); }
+  .grade-mes td.ferias.ok.minha { background: var(--azul); }
+  .grade-mes td.ferias.solicitada { background: #9CC5A6; }
+  .grade-mes td.ferias.solicitada.minha { background: #8FA6C0; }
+  .grade-mes td.ferias.sobre { background: var(--ambar); }
+  .periodos-lista.compacta .periodo { padding: 6px 10px; gap: 4px 10px; }
+  .periodos-lista.compacta .periodo.minha-linha { background: var(--azul-claro); border-color: transparent; }
+  .legenda-ferias .amostra { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 2px; }
+  .legenda-ferias .amostra.minha { background: var(--azul); }
+  .legenda-ferias .amostra.ok { background: var(--verde); }
+  .legenda-ferias .amostra.solicitada { background: #9CC5A6; }
+  .legenda-ferias .amostra.sobre { background: var(--ambar); }
+  .legenda-ferias .amostra.coletiva { background: var(--cinza-medio); }
+  .legenda-ferias .amostra.fds { background: var(--cinza-claro); border: 1px solid var(--borda); }
+  .sobreposicoes { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .lateral-ferias { position: sticky; top: 16px; align-self: start; display: flex; flex-direction: column; gap: 14px; }
+  .lateral-ferias .cartao + .cartao { margin-top: 0; }
+  .form-ferias .campo { margin-top: 10px; }
+  .form-ferias .total { margin-top: 12px; font-weight: 600; }
+  .form-ferias .avisos-previa { margin-top: 10px; }
+  .form-ferias .avisos-previa .aviso { font-size: 14px; padding: 9px 12px; }
+  .form-ferias textarea { display: block; width: 100%; box-sizing: border-box; min-height: 60px; margin-top: 6px; padding: 8px 12px; border: 1.5px solid var(--borda); border-radius: 9px; font: inherit; font-weight: 400; background: #fff; resize: vertical; }
+  .pendencias .periodo { background: var(--ambar-claro); border-color: var(--ambar-borda); }
+  .pendencias .periodo.aprovada { background: var(--azul-claro); border-color: transparent; }
+</style>
+<script>
+/**
+ * Tela Férias: saldo, meus períodos, linha do tempo da equipe e painel "Solicitar férias".
+ * Gestor: pendências de aprovação (aprovar / devolver / encaminhar ao RH) e lança para qualquer pessoa.
+ */
+(function () {
+  var estado = { mes: '', editando: null };
+
+  TELAS.ferias = {
+    titulo: 'Férias',
+    descricao: '',
+    carregar: function (corpo, acoes) {
+      estado.mes = '';
+      estado.editando = null;
+      return carregar(corpo, acoes);
+    }
+  };
+
+  var pedido = 0;
+  var ultimoDesenhado = null;
+  var ROTULO_STATUS = { rascunho: 'Rascunho', solicitada: 'Solicitada', aprovada: 'Aprovada', encaminhada: 'Encaminhada ao RH', devolvida: 'Devolvida' };
+
+  function carregar(corpo, acoes) {
+    var meuPedido = ++pedido;
+    var desenhou = false;
+    var promessa = apiGuardada('obterFerias', [estado.mes], function (d, fresco) {
+      if (meuPedido !== pedido || !corpo.isConnected) return;
+      var texto = JSON.stringify(d);
+      if (fresco && desenhou && texto === ultimoDesenhado) return;
+      desenhou = true;
+      ultimoDesenhado = texto;
+      desenhar(corpo, acoes, d);
+    });
+    if (!desenhou) corpo.innerHTML = '<div class="carregando">Carregando…</div>';
+    return promessa.catch(function (erro) {
+      if (meuPedido === pedido && !desenhou) corpo.innerHTML = '';
+      mostrarErro(erro);
+    });
+  }
+
+  function desenhar(corpo, acoes, d) {
+    atualizarCabecalho({ titulo: 'Férias', descricao: 'Marcar com ' + d.antecedencia + ' dias de antecedência.' });
+    acoes.innerHTML = '';
+    corpo.innerHTML = '';
+
+    var grade = el('<div class="com-lateral"></div>');
+    var principal = el('<div></div>');
+    var lateral = el('<div class="lateral-ferias"></div>');
+    var form = el('<div class="cartao form-ferias"></div>');
+    lateral.appendChild(form);
+    var ctx = { d: d, corpo: corpo, acoes: acoes, form: form };
+
+    if (d.souGestor && d.pendencias && d.pendencias.length) principal.appendChild(cartaoPendencias(d, ctx));
+
+    var topo = el('<div class="ferias-topo"></div>');
+    topo.appendChild(cartaoSaldo(d));
+    topo.appendChild(cartaoMeus(d, ctx));
+    principal.appendChild(topo);
+    principal.appendChild(cartaoEquipe(d, ctx));
+
+    grade.appendChild(principal);
+    grade.appendChild(lateral);
+    corpo.appendChild(grade);
+    desenharForm(ctx);
+  }
+
+  // ---------- Saldo e meus períodos ----------
+
+  function cartaoSaldo(d) {
+    var s = d.saldo;
+    var c = el('<div class="cartao saldo"><h3>Seu saldo</h3></div>');
+    if (!s.cadastrado) {
+      c.appendChild(el('<p class="vazio">Saldo ainda não cadastrado. Peça ao gestor para preencher a aba SaldoFerias.</p>'));
+      return c;
+    }
+    c.appendChild(el('<div class="numero-grande' + (s.disponivel < 0 ? ' ambar' : '') + '">' + s.disponivel + ' <small>de ' + s.inicial + ' dias</small></div>'));
+    var linhas = [];
+    if (s.usados) linhas.push(s.usados + ' dias já solicitados ou aprovados');
+    if (s.prazoLimite) linhas.push('Prazo limite para gozo: ' + s.prazoLimite + (s.diasAteLimite !== null && s.diasAteLimite < 0 ? ' (já passou)' : ''));
+    if (s.periodoAquisitivo) linhas.push('Período aquisitivo: ' + s.periodoAquisitivo);
+    c.appendChild(el('<p class="nota" style="margin-top:10px">' + esc(linhas.join(' · ')) + '</p>'));
+    return c;
+  }
+
+  function linhaPeriodo(p, ctx, comNome) {
+    var item = el('<div class="periodo' + (p.passada ? ' passada' : '') + ' ' + esc(p.status) + '">' +
+      (comNome ? '<strong>' + esc(p.nome) + '</strong> · ' : '') +
+      '<span class="datas">' + esc(p.rotulo) + '</span><span class="dias">' + p.dias + ' dias</span>' +
+      '<span class="etiqueta status-' + esc(p.status) + '">' + esc(ROTULO_STATUS[p.status] || p.status) + '</span>' +
+      '<span class="acoes-periodo"></span>' +
+      (p.observacao ? '<span class="obs">' + esc(p.observacao) + '</span>' : '') + '</div>');
+    var acoes = item.querySelector('.acoes-periodo');
+    if (p.podeEnviar) {
+      var enviar = el('<button type="button">Enviar</button>');
+      enviar.addEventListener('click', function () { salvar(ctx, { id: p.id, inicio: p.inicio, fim: p.fim, observacao: p.observacao, email: p.email }, 'solicitar'); });
+      acoes.appendChild(enviar);
+    }
+    if (p.podeEditar) {
+      var editar = el('<button type="button">Editar</button>');
+      editar.addEventListener('click', function () { estado.editando = p; desenharForm(ctx); ctx.form.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+      acoes.appendChild(editar);
+    }
+    if (p.podeCancelar && !p.passada) {
+      var cancelar = el('<button type="button" class="perigo">Cancelar</button>');
+      cancelar.addEventListener('click', function () { confirmarCancelar(p, ctx); });
+      acoes.appendChild(cancelar);
+    }
+    return item;
+  }
+
+  function cartaoMeus(d, ctx) {
+    var c = el('<div class="cartao"><h3>Seus períodos</h3></div>');
+    if (!d.meus.length) { c.appendChild(el('<p class="vazio">Nenhum período. Use o painel ao lado para solicitar.</p>')); return c; }
+    var lista = el('<div class="periodos-lista"></div>');
+    d.meus.forEach(function (p) { lista.appendChild(linhaPeriodo(p, ctx, false)); });
+    c.appendChild(lista);
+    return c;
+  }
+
+  function confirmarCancelar(p, ctx) {
+    var m = abrirModal('<h2>Cancelar férias?</h2><p class="nota">' + esc((p.minha ? 'Seu período' : 'Período de ' + p.nome) + ' de ' + p.rotulo + ' (' + p.dias + ' dias) será cancelado.') + '</p>' +
+      '<div class="acoes"><button type="button" class="botao neutro" data-acao="nao">Voltar</button><button type="button" class="botao escuro" data-acao="sim">Cancelar férias</button></div>');
+    m.querySelector('[data-acao="nao"]').addEventListener('click', fecharModal);
+    m.querySelector('[data-acao="sim"]').addEventListener('click', function () {
+      m.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+      api('cancelarFerias', p.id).then(function () { fecharModal(); toast('Período cancelado.'); carregar(ctx.corpo, ctx.acoes); })
+        .catch(function (e) { fecharModal(); mostrarErro(e); });
+    });
+  }
+
+  // ---------- Pendências (gestor) ----------
+
+  function cartaoPendencias(d, ctx) {
+    var c = el('<div class="cartao pendencias" style="margin-bottom:14px"><h3>Pendências de aprovação</h3><div class="periodos-lista"></div></div>');
+    var lista = c.querySelector('.periodos-lista');
+    d.pendencias.forEach(function (p) {
+      var item = linhaPeriodo(p, ctx, true);
+      var acoes = item.querySelector('.acoes-periodo');
+      acoes.innerHTML = '';
+      if (p.status === 'solicitada') {
+        var aprovar = el('<button type="button">Aprovar</button>');
+        aprovar.addEventListener('click', function () { decidir(p, 'aprovar', ctx, item); });
+        acoes.appendChild(aprovar);
+      }
+      if (p.status === 'aprovada') {
+        var enc = el('<button type="button">Encaminhar ao RH</button>');
+        enc.addEventListener('click', function () { decidir(p, 'encaminhar', ctx, item); });
+        acoes.appendChild(enc);
+      }
+      var dev = el('<button type="button" class="perigo">Devolver</button>');
+      dev.addEventListener('click', function () { pedirMotivo(p, ctx, item); });
+      acoes.appendChild(dev);
+      lista.appendChild(item);
+    });
+    return c;
+  }
+
+  function decidir(p, acao, ctx, item, motivo) {
+    item.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+    chamarComConfirmacao('decidirFerias', { id: p.id, acao: acao, motivo: motivo || '' }, {
+      textoBotao: 'Aprovar mesmo assim', titulo: 'Confirmar aprovação',
+      subtitulo: 'As férias de ' + p.nome + ' (' + p.rotulo + ') têm os avisos abaixo.'
+    }).then(function (r) {
+      if (!r) { item.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); return; }
+      toast({ aprovar: 'Férias aprovadas.', devolver: 'Solicitação devolvida.', encaminhar: 'Encaminhadas ao RH.' }[acao]);
+      carregar(ctx.corpo, ctx.acoes);
+    }).catch(function (e) { item.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); mostrarErro(e); });
+  }
+
+  function pedirMotivo(p, ctx, item) {
+    var m = abrirModal('<h2>Devolver para ajuste</h2><p class="nota">' + esc(p.nome + ' · ' + p.rotulo) + '</p>' +
+      '<label class="campo">Motivo (opcional)<textarea id="motivoDev" maxlength="200" style="display:block;width:100%;box-sizing:border-box;min-height:70px;margin-top:6px;padding:8px 12px;border:1.5px solid var(--borda);border-radius:9px;font:inherit;font-weight:400"></textarea></label>' +
+      '<div class="acoes"><button type="button" class="botao neutro" data-acao="nao">Voltar</button><button type="button" class="botao escuro" data-acao="sim">Devolver</button></div>');
+    m.querySelector('[data-acao="nao"]').addEventListener('click', fecharModal);
+    m.querySelector('[data-acao="sim"]').addEventListener('click', function () {
+      var motivo = m.querySelector('#motivoDev').value;
+      fecharModal();
+      decidir(p, 'devolver', ctx, item, motivo);
+    });
+  }
+
+  // ---------- Equipe: calendário mensal ----------
+
+  var DIA_INICIAL = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+  function cartaoEquipe(d, ctx) {
+    var e = d.equipe;
+    var c = el('<div class="cartao"><div class="barra-periodo"><h2>Equipe</h2><span class="etiqueta suave">' + esc(e.titulo) + '</span>' +
+      '<div class="navegacao-periodo" style="margin-left:auto">' +
+        '<button type="button" class="botao neutro pequeno" data-ir="' + esc(e.anterior) + '">‹ Ano anterior</button>' +
+        '<button type="button" class="botao neutro pequeno" data-ir="' + esc(e.atual) + '">Hoje</button>' +
+        '<button type="button" class="botao neutro pequeno" data-ir="' + esc(e.proximo) + '">Ano seguinte ›</button>' +
+      '</div></div></div>');
+    c.querySelectorAll('[data-ir]').forEach(function (b) {
+      b.addEventListener('click', function () { estado.mes = b.dataset.ir; carregar(ctx.corpo, ctx.acoes); });
+    });
+
+    var hojeIsoStr = e.hoje;
+    var comFerias = e.meses.filter(function (m) { return m.pessoas.length; });
+    if (!comFerias.length) c.appendChild(el('<p class="vazio">Ninguém de férias entre ' + esc(e.titulo) + '.</p>'));
+    comFerias.forEach(function (m) {
+      var bloco = el('<section class="mes-ferias"><header><h3>' + esc(m.titulo) + '</h3><span class="nota">' + m.pessoas.length + (m.pessoas.length === 1 ? ' pessoa' : ' pessoas') + '</span></header></section>');
+      // grade: cabeçalho com os dias do mês; uma linha por pessoa
+      var grade = el('<div class="grade-mes"><table></table></div>');
+      var tabela = grade.querySelector('table');
+      var cab = '<tr><th class="nome"></th>';
+      for (var dia = 1; dia <= m.dias; dia++) {
+        var ds = (m.primeiroDiaSemana + dia - 1) % 7;
+        var fds = ds === 0 || ds === 6;
+        var isoDia = m.chave + '-' + ('0' + dia).slice(-2);
+        var classes = (fds ? 'fds ' : '') + (isoDia === hojeIsoStr ? 'hoje ' : '') + (m.feriados.indexOf(dia) >= 0 ? 'feriado ' : '') + (m.coletivas.indexOf(dia) >= 0 ? 'coletiva ' : '');
+        cab += '<th class="' + classes + '" title="' + esc(DIAS_NOME[ds]) + (m.feriados.indexOf(dia) >= 0 ? ' · feriado' : '') + (m.coletivas.indexOf(dia) >= 0 ? ' · férias coletivas' : '') + '"><span class="ds">' + DIA_INICIAL[ds] + '</span>' + dia + '</th>';
+      }
+      cab += '</tr>';
+      var linhas = m.pessoas.map(function (p) {
+        var tds = '';
+        for (var dia = 1; dia <= m.dias; dia++) {
+          var ds = (m.primeiroDiaSemana + dia - 1) % 7;
+          var estado = p.dias[dia];
+          var cl = (ds === 0 || ds === 6 ? 'fds ' : '') + (m.coletivas.indexOf(dia) >= 0 ? 'coletiva ' : '') + (estado ? 'ferias ' + estado + (p.minha ? ' minha' : '') : '');
+          tds += '<td class="' + cl + '"></td>';
+        }
+        return '<tr><td class="nome">' + esc(p.minha ? 'Você' : p.nome) + '</td>' + tds + '</tr>';
+      }).join('');
+      tabela.innerHTML = '<thead>' + cab + '</thead><tbody>' + linhas + '</tbody>';
+      bloco.appendChild(grade);
+
+      // lista: quem, quando, quantos dias, situação
+      var lista = el('<div class="periodos-lista compacta"></div>');
+      m.pessoas.forEach(function (p) {
+        p.periodos.forEach(function (per) {
+          var sobre = e.sobreposicoes.some(function (s) { return s.inicio <= per.fim && s.fim >= per.inicio && s.nomes.indexOf(p.nome) >= 0; });
+          lista.appendChild(el('<div class="periodo' + (p.minha ? ' minha-linha' : '') + '"><strong>' + esc(p.minha ? 'Você' : p.nome) + '</strong>' +
+            '<span class="datas">' + esc(per.rotulo) + '</span><span class="dias">' + per.dias + ' dias</span>' +
+            '<span class="etiqueta status-' + esc(per.status) + '">' + esc(ROTULO_STATUS[per.status] || per.status) + '</span>' +
+            (sobre ? '<span class="etiqueta ambar pilula">sobreposição</span>' : '') + '</div>'));
+        });
+      });
+      bloco.appendChild(lista);
+      c.appendChild(bloco);
+    });
+
+    if (e.sobreposicoes.length) {
+      var sob = el('<div class="sobreposicoes"></div>');
+      e.sobreposicoes.forEach(function (s) { sob.appendChild(el(htmlAviso({ titulo: 'Sobreposição', texto: s.texto }))); });
+      c.appendChild(sob);
+    }
+    c.appendChild(el('<p class="nota legenda-ferias" style="margin-top:12px">' +
+      '<span class="amostra minha"></span> você · <span class="amostra ok"></span> colega · <span class="amostra solicitada"></span> aguardando o gestor · ' +
+      '<span class="amostra sobre"></span> sobreposição · <span class="amostra coletiva"></span> férias coletivas · <span class="amostra fds"></span> fim de semana</p>'));
+    return c;
+  }
+
+  // ---------- Painel "Solicitar férias" ----------
+
+  var previaTimer = null;
+
+  function desenharForm(ctx) {
+    var form = ctx.form;
+    var d = ctx.d;
+    var p = estado.editando;
+    form.innerHTML =
+      '<h2>' + (p ? 'Editar período' : 'Solicitar férias') + '</h2>' +
+      (p ? '<p class="nota" style="margin-top:-6px;margin-bottom:8px">' + esc(p.rotulo + ' · ' + (ROTULO_STATUS[p.status] || p.status)) + '</p>' : '') +
+      (d.souGestor
+        ? '<label class="campo">Pessoa<select id="ferPessoa">' + d.pessoas.map(function (x) { return '<option value="' + esc(x.email) + '"' + ((p ? p.email : USUARIO.email) === x.email ? ' selected' : '') + '>' + esc(x.email === USUARIO.email ? 'Eu (' + x.nome + ')' : x.nome) + '</option>'; }).join('') + '</select></label>'
+        : '') +
+      '<label class="campo">Início<input type="date" id="ferInicio" value="' + esc(p ? p.inicio : '') + '"></label>' +
+      '<label class="campo">Fim<input type="date" id="ferFim" value="' + esc(p ? p.fim : '') + '"></label>' +
+      '<label class="campo">Observação (opcional)<textarea id="ferObs" maxlength="200">' + esc(p && p.status !== 'devolvida' ? p.observacao : '') + '</textarea></label>' +
+      '<div class="total" id="ferTotal">Total: —</div>' +
+      '<div class="avisos-previa" id="ferAvisos"></div>' +
+      '<div class="acoes">' +
+        (p ? '<button type="button" class="botao neutro" data-acao="descartar">Descartar</button>' : '') +
+        '<button type="button" class="botao neutro" data-acao="rascunho">Salvar rascunho</button>' +
+        '<button type="button" class="botao escuro" data-acao="solicitar">' + (p && p.status !== 'rascunho' && p.status !== 'devolvida' ? 'Salvar' : 'Enviar solicitação') + '</button>' +
+      '</div>';
+
+    var ler = function () {
+      return {
+        id: p ? p.id : '',
+        inicio: form.querySelector('#ferInicio').value,
+        fim: form.querySelector('#ferFim').value,
+        observacao: form.querySelector('#ferObs').value,
+        email: d.souGestor ? form.querySelector('#ferPessoa').value : USUARIO.email
+      };
+    };
+    var previa = function () {
+      var v = ler();
+      var total = form.querySelector('#ferTotal'), av = form.querySelector('#ferAvisos');
+      if (!v.inicio || !v.fim) { total.textContent = 'Total: —'; av.innerHTML = ''; return; }
+      clearTimeout(previaTimer);
+      previaTimer = setTimeout(function () {
+        api('previaFerias', v).then(function (r) {
+          if (!form.isConnected) return;
+          total.textContent = 'Total: ' + r.dias + (r.dias === 1 ? ' dia' : ' dias');
+          av.innerHTML = r.avisos.map(htmlAviso).join('');
+        }).catch(function () { /* prévia é só informativa */ });
+      }, 400);
+    };
+    ['#ferInicio', '#ferFim', '#ferPessoa'].forEach(function (sel) {
+      var campo = form.querySelector(sel);
+      if (campo) campo.addEventListener('change', previa);
+    });
+    previa();
+
+    var descartar = form.querySelector('[data-acao="descartar"]');
+    if (descartar) descartar.addEventListener('click', function () { estado.editando = null; desenharForm(ctx); });
+    form.querySelector('[data-acao="rascunho"]').addEventListener('click', function () { salvar(ctx, ler(), 'rascunho'); });
+    form.querySelector('[data-acao="solicitar"]').addEventListener('click', function () { salvar(ctx, ler(), 'solicitar'); });
+  }
+
+  function salvar(ctx, dados, acao) {
+    if (!dados.inicio || !dados.fim) { toast('Informe início e fim.', true); return; }
+    var form = ctx.form;
+    form.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+    var envio = { id: dados.id || '', inicio: dados.inicio, fim: dados.fim, observacao: dados.observacao || '', acao: acao };
+    if (dados.email && dados.email !== USUARIO.email) envio.email = dados.email;
+    chamarComConfirmacao('salvarFerias', envio, {
+      textoBotao: 'Enviar mesmo assim', titulo: 'Confirmar solicitação',
+      subtitulo: 'O período tem os avisos abaixo. Se enviar, fica registrado que você viu.'
+    }).then(function (r) {
+      if (!r) { form.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); return; }
+      toast(acao === 'rascunho' ? 'Rascunho salvo.' : 'Solicitação enviada' + (r.avisosIgnorados ? ' (com aviso registrado)' : '') + '.');
+      estado.editando = null;
+      carregar(ctx.corpo, ctx.acoes);
+    }).catch(function (e) { form.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); mostrarErro(e); });
+  }
+})();
+</script>

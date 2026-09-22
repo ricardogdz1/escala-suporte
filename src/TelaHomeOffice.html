@@ -1,0 +1,384 @@
+<style>
+  .faixa-ho { background: var(--menu, #1F2B23); color: #fff; border-radius: var(--raio); padding: 16px 20px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; font-size: 16px; }
+  .faixa-ho .icone { font-size: 20px; }
+  .lista-ho { display: flex; flex-direction: column; gap: 14px; }
+  .cartao-ho { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 18px; align-items: center; padding: 16px 22px; }
+  .cartao-ho.passada { opacity: 0.75; }
+  .cartao-ho.atual { border-color: var(--verde); }
+  .cartao-ho.minha { background: var(--verde-claro); border-color: #C9DECD; }
+  .cartao-ho.pendente { border: 1.5px dashed var(--verde); }
+  .cartao-ho.presencial { background: var(--cinza-medio); border-color: var(--cinza-medio); }
+  .cartao-ho .semana { font-weight: 700; font-size: 17px; }
+  .cartao-ho .semana small { display: block; font-weight: 400; font-size: 13px; color: var(--texto-suave); margin-top: 2px; }
+  .cartao-ho .conteudo { display: flex; flex-direction: column; gap: 8px; }
+  .cartao-ho .detalhe { font-size: 14px; color: var(--texto-suave); }
+  .cartao-ho .etiqueta button {
+    background: none; border: 0; color: inherit; padding: 0 0 0 2px; font-size: 14px; line-height: 1; cursor: pointer; opacity: 0.7; min-width: 24px; min-height: 24px;
+  }
+  .cartao-ho .etiqueta button:hover { opacity: 1; }
+  .cartao-ho .etiqueta.riscado { text-decoration: line-through; opacity: 0.55; }
+  .cartao-ho .etiqueta.pendente { background: none; border: 1.5px dashed var(--verde); color: var(--verde); padding: 3.5px 10.5px; }
+  .cartao-ho .lado { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .cartao-ho select.escolher { min-height: 40px; padding: 6px 10px; border: 1.5px solid var(--borda); border-radius: 9px; font: inherit; background: #fff; max-width: 200px; }
+  @media (max-width: 700px) { .cartao-ho { grid-template-columns: 1fr; } .cartao-ho .lado { align-items: flex-start; } }
+  .cartao-mais-ho {
+    display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; padding: 12px 20px;
+    text-align: left; font: inherit; color: var(--texto); cursor: pointer; background: var(--cinza-claro); border-style: dashed;
+  }
+  .cartao-mais-ho:hover { background: var(--cinza-medio); }
+  .cartao-mais-ho:disabled { cursor: default; opacity: 0.7; }
+  .cartao-mais-ho .seta { color: var(--verde); font-size: 14px; }
+  .cartao-mais-ho .texto { display: flex; flex-direction: column; gap: 2px; }
+  .lateral-ho { position: sticky; top: 16px; align-self: start; display: flex; flex-direction: column; gap: 14px; }
+  .lateral-ho .cartao + .cartao { margin-top: 0; }
+  .painel-mudancas-ho .subtitulo { color: var(--texto-suave); margin: -6px 0 14px; }
+  .painel-mudancas-ho ul { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 0 0 4px; padding: 0; }
+  .painel-mudancas-ho li { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .painel-mudancas-ho li .sinal { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; flex: 0 0 auto; }
+  .painel-mudancas-ho li .sinal.mais { background: var(--verde-claro); color: var(--verde); }
+  .painel-mudancas-ho li .sinal.menos { background: var(--ambar-claro); color: var(--ambar); }
+  .fila-ho h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .fila-ho .grupo-fila + .grupo-fila { margin-top: 14px; }
+  .fila-ho .grupo-fila h4 { font-family: var(--fonte-texto); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--texto-suave); margin-bottom: 8px; }
+  .fila-ho .grupo-fila h4 .qtd { font-weight: 600; letter-spacing: 0; }
+  .fila-ho .grupo-fila .etiqueta { flex-direction: column; align-items: flex-start; gap: 0; padding: 5px 12px; }
+  .fila-ho .grupo-fila .etiqueta small { font-size: 11px; opacity: 0.8; line-height: 1.2; }
+  .fila-ho .grupo-fila .vazio { font-size: 14px; }
+</style>
+<script>
+/**
+ * Tela Home office: um cartão por semana (semana atual + 12). Reservar/cancelar em lote pelo painel
+ * "Mudanças"; na lateral, o histórico "Seus home offices" (6 meses para trás e o futuro).
+ */
+(function () {
+  var estado = {
+    janelas: [],   // segundas-feiras dos blocos carregados, em ordem
+    dados: {},
+    alvo: '',
+    reservar: {},  // chave semana|email -> {semana, email, nome}
+    cancelar: {}   // id -> {semana, nome}
+  };
+
+  function segundaDe(iso) {
+    var d = dataDe(iso);
+    var recuo = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    d.setDate(d.getDate() - recuo);
+    return isoDe(d);
+  }
+  function maisDias(iso, n) { var d = dataDe(iso); d.setDate(d.getDate() + n); return isoDe(d); }
+  function diaMes(iso) { return iso.substring(8, 10) + '/' + iso.substring(5, 7); }
+  function rotuloJanela(seg) { return diaMes(seg) + ' a ' + diaMes(maisDias(seg, 13 * 7 - 3)); }
+  function chaveReserva(e) { return e.semana + '|' + e.email; }
+  function nomeSetor(s) { s = String(s || '').toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  TELAS.homeoffice = {
+    titulo: 'Home office',
+    descricao: 'Uma pessoa da equipe por semana, de segunda a sexta.',
+    carregar: function (corpo, acoes) {
+      var p = TELAS.homeoffice.parametros;
+      var atual = segundaDe(hojeIso());
+      estado.janelas = [atual];
+      estado.alvo = (p && p.data) ? segundaDe(p.data) : '';
+      if (estado.alvo) {
+        while (estado.alvo < estado.janelas[0]) estado.janelas.unshift(maisDias(estado.janelas[0], -91));
+        while (estado.alvo > maisDias(estado.janelas[estado.janelas.length - 1], 84)) estado.janelas.push(maisDias(estado.janelas[estado.janelas.length - 1], 91));
+      }
+      return carregar(corpo, acoes);
+    }
+  };
+
+  var pedido = 0;
+  var ultimoDesenhado = null;
+
+  function carregar(corpo, acoes) {
+    var meuPedido = ++pedido;
+    var desenhou = false;
+    var tentarDesenhar = function () {
+      if (meuPedido !== pedido || !corpo.isConnected) return;
+      if (!estado.janelas.every(function (j) { return estado.dados[j]; })) return;
+      var d = mesclar();
+      var texto = JSON.stringify(d);
+      if (desenhou && texto === ultimoDesenhado) return;
+      desenhou = true;
+      ultimoDesenhado = texto;
+      desenhar(corpo, acoes, d);
+    };
+    var promessas = estado.janelas.map(function (j) {
+      return apiGuardada('obterHomeOffice', [j], function (d) { estado.dados[j] = d; tentarDesenhar(); });
+    });
+    if (!desenhou) corpo.innerHTML = '<div class="carregando">Carregando…</div>';
+    return Promise.all(promessas).catch(function (erro) {
+      if (meuPedido === pedido && !desenhou) corpo.innerHTML = '';
+      mostrarErro(erro);
+    });
+  }
+
+  function mesclar() {
+    var primeira = estado.dados[estado.janelas[0]];
+    var semanas = [];
+    estado.janelas.forEach(function (j) { semanas = semanas.concat(estado.dados[j].semanas); });
+    return {
+      semanas: semanas,
+      semanaAtual: primeira.semanaAtual,
+      estaSemana: primeira.estaSemana,
+      janelaAnterior: estado.dados[estado.janelas[0]].anterior,
+      janelaSeguinte: estado.dados[estado.janelas[estado.janelas.length - 1]].proximo,
+      meus: primeira.meus,
+      souGestor: primeira.souGestor,
+      pessoas: primeira.pessoas
+    };
+  }
+
+  function desenhar(corpo, acoes, d) {
+    atualizarCabecalho();
+    acoes.innerHTML = '';
+    corpo.innerHTML = '';
+
+    var quem = d.estaSemana;
+    corpo.appendChild(el('<div class="faixa-ho"><span class="icone" aria-hidden="true">🏠</span><span>Esta semana (' +
+      esc(diaMes(d.semanaAtual) + ' a ' + diaMes(maisDias(d.semanaAtual, 4))) + '): ' +
+      (quem.length ? '<strong>' + esc(listaNomes(quem)) + '</strong> ' + (quem.length === 1 ? 'está' : 'estão') + ' em home office.' : 'ninguém em home office.') +
+      '</span></div>'));
+
+    var grade = el('<div class="com-lateral"></div>');
+    var lista = el('<div class="lista-ho"></div>');
+
+    var lateral = el('<div class="lateral-ho"></div>');
+    var irHoje = el('<button type="button" class="botao neutro largo">Ir para a semana atual</button>');
+    irHoje.addEventListener('click', function () {
+      var alvo = corpo.querySelector('[data-semana="' + d.semanaAtual + '"]');
+      if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    lateral.appendChild(irHoje);
+    var painel = el('<div class="cartao painel-mudancas-ho oculto"></div>');
+    lateral.appendChild(painel);
+    var fila = el('<div class="cartao fila-ho"></div>');
+    lateral.appendChild(fila);
+
+    var ctx = { d: d, corpo: corpo, acoes: acoes, painel: painel, lista: lista, fila: fila };
+    desenharMeus(ctx, d.meus);
+
+    lista.appendChild(cartaoMais('anteriores', d.janelaAnterior, ctx));
+    d.semanas.forEach(function (sem) { lista.appendChild(cartaoSemana(sem, ctx)); });
+    lista.appendChild(cartaoMais('seguintes', d.janelaSeguinte, ctx));
+
+    grade.appendChild(lista);
+    grade.appendChild(lateral);
+    corpo.appendChild(grade);
+    desenharPainel(ctx);
+
+    if (estado.alvo) {
+      var alvo = corpo.querySelector('[data-semana="' + estado.alvo + '"]');
+      estado.alvo = '';
+      if (alvo) setTimeout(function () { alvo.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
+    }
+  }
+
+  function cartaoMais(qual, janela, ctx) {
+    var anteriores = qual === 'anteriores';
+    var c = el('<button type="button" class="cartao cartao-mais-ho">' +
+      '<span class="seta" aria-hidden="true">' + (anteriores ? '▲' : '▼') + '</span>' +
+      '<span class="texto"><strong>' + (anteriores ? 'Semanas anteriores' : 'Próximas semanas') + '</strong>' +
+      '<span class="nota">Ver ' + esc(rotuloJanela(janela)) + '</span></span></button>');
+    c.addEventListener('click', function () {
+      c.disabled = true;
+      c.querySelector('.nota').textContent = 'Carregando…';
+      if (anteriores) estado.janelas.unshift(janela); else estado.janelas.push(janela);
+      carregar(ctx.corpo, ctx.acoes);
+    });
+    return c;
+  }
+
+  // ---------- Seus home offices ----------
+
+  /** Cartão lateral: as semanas de home office da pessoa, de 6 meses atrás até o futuro, por mês. */
+  function desenharMeus(ctx, meus) {
+    var f = ctx.fila;
+    var rotulo = { passada: 'usada', atual: 'esta semana', reservada: 'reservada' };
+    f.innerHTML =
+      '<h3>Seus home offices</h3>' +
+      '<p class="nota" style="margin-top:-6px;margin-bottom:10px">' + meus.passadas + (meus.passadas === 1 ? ' semana usada' : ' semanas usadas') + ' desde ' + esc(meus.desde) +
+        (meus.futuras ? ' · ' + meus.futuras + (meus.futuras === 1 ? ' reservada' : ' reservadas') : '') + '</p>' +
+      (meus.meses.length
+        ? meus.meses.map(function (m) {
+            return '<div class="grupo-fila"><h4>' + esc(m.titulo) + '</h4><div class="etiquetas">' +
+              m.semanas.map(function (s) {
+                var classe = s.situacao === 'reservada' ? 'azul' : (s.situacao === 'atual' ? 'cheia' : '');
+                return '<span class="etiqueta ' + classe + '">' + esc(s.titulo) + '<small>' + esc(rotulo[s.situacao]) + '</small></span>';
+              }).join('') + '</div></div>';
+          }).join('')
+        : '<p class="vazio">Nenhuma semana de home office desde ' + esc(meus.desde) + '.</p>');
+  }
+
+  // ---------- Mudanças pendentes ----------
+
+  function alternarReservar(sem, email, nome, ctx) {
+    var e = { semana: sem.inicio, email: email, nome: nome };
+    var chave = chaveReserva(e);
+    if (estado.reservar[chave]) delete estado.reservar[chave];
+    else estado.reservar[chave] = e;
+    redesenharSemana(sem, ctx);
+  }
+
+  function alternarCancelar(r, sem, ctx) {
+    if (estado.cancelar[r.id]) delete estado.cancelar[r.id];
+    else estado.cancelar[r.id] = { semana: sem.inicio, nome: r.minha ? 'Você' : r.nome };
+    redesenharSemana(sem, ctx);
+  }
+
+  function redesenharSemana(sem, ctx) {
+    var atual = ctx.lista.querySelector('[data-semana="' + sem.inicio + '"]');
+    if (atual) atual.replaceWith(cartaoSemana(sem, ctx));
+    desenharPainel(ctx);
+  }
+
+  function pendentesDaSemana(sem) {
+    return Object.keys(estado.reservar).map(function (k) { return estado.reservar[k]; }).filter(function (e) { return e.semana === sem.inicio; });
+  }
+  function temPendencia(sem) {
+    var k;
+    for (k in estado.reservar) if (estado.reservar[k].semana === sem.inicio) return true;
+    for (k in estado.cancelar) if (estado.cancelar[k].semana === sem.inicio) return true;
+    return false;
+  }
+
+  function desenharPainel(ctx) {
+    var painel = ctx.painel;
+    var itens = [];
+    Object.keys(estado.reservar).forEach(function (k) { var e = estado.reservar[k]; itens.push({ sinal: 'mais', semana: e.semana, nome: e.email === USUARIO.email ? 'Você' : e.nome }); });
+    Object.keys(estado.cancelar).forEach(function (k) { var c = estado.cancelar[k]; itens.push({ sinal: 'menos', semana: c.semana, nome: c.nome }); });
+    if (!itens.length) { painel.classList.add('oculto'); painel.innerHTML = ''; return; }
+    itens.sort(function (a, b) { return a.semana < b.semana ? -1 : a.semana > b.semana ? 1 : a.sinal === 'menos' ? -1 : 1; });
+
+    var nRes = Object.keys(estado.reservar).length, nCan = Object.keys(estado.cancelar).length;
+    var resumo = [];
+    if (nRes) resumo.push(nRes + (nRes === 1 ? ' reserva' : ' reservas'));
+    if (nCan) resumo.push(nCan + (nCan === 1 ? ' cancelamento' : ' cancelamentos'));
+
+    painel.classList.remove('oculto');
+    painel.innerHTML =
+      '<h2>Mudanças</h2><p class="subtitulo">' + esc(resumo.join(' · ')) + '</p>' +
+      '<ul>' + itens.map(function (i) {
+        return '<li><span class="sinal ' + i.sinal + '">' + (i.sinal === 'mais' ? '+' : '−') + '</span>' +
+          '<span>' + esc(diaMes(i.semana) + ' a ' + diaMes(maisDias(i.semana, 4))) + ' · ' + esc(i.nome) + '</span></li>';
+      }).join('') + '</ul>' +
+      '<p class="nota">Nada é gravado até você confirmar.</p>' +
+      '<div class="acoes"><button type="button" class="botao neutro" data-acao="limpar">Limpar</button>' +
+      '<button type="button" class="botao escuro" data-acao="salvar">Confirmar (' + itens.length + ')</button></div>';
+
+    painel.querySelector('[data-acao="limpar"]').addEventListener('click', function () {
+      estado.reservar = {}; estado.cancelar = {};
+      desenhar(ctx.corpo, ctx.acoes, ctx.d);
+    });
+    painel.querySelector('[data-acao="salvar"]').addEventListener('click', function () { salvar(ctx); });
+  }
+
+  function salvar(ctx) {
+    var painel = ctx.painel;
+    var dados = {
+      reservar: Object.keys(estado.reservar).map(function (k) {
+        var e = estado.reservar[k];
+        var item = { semana: e.semana };
+        if (e.email !== USUARIO.email) item.email = e.email;
+        return item;
+      }),
+      cancelar: Object.keys(estado.cancelar)
+    };
+    painel.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+    chamarComConfirmacao('salvarHomeOffice', dados, {
+      painel: painel, textoBotao: 'Salvar mesmo assim', titulo: 'Confirmar reservas',
+      subtitulo: 'Os avisos abaixo valem para as mudanças que você marcou.'
+    }).then(function (r) {
+      if (!r) { desenharPainel(ctx); return; }
+      estado.reservar = {}; estado.cancelar = {};
+      var partes = [];
+      if (r.reservadas) partes.push(r.reservadas === 1 ? '1 semana reservada' : r.reservadas + ' semanas reservadas');
+      if (r.canceladas) partes.push(r.canceladas === 1 ? '1 cancelada' : r.canceladas + ' canceladas');
+      toast(partes.join(' e ') + (r.avisosIgnorados ? ' (com aviso registrado)' : '') + '.');
+      carregar(ctx.corpo, ctx.acoes);
+    }).catch(function (e) { desenharPainel(ctx); mostrarErro(e); });
+  }
+
+  // ---------- Cartões ----------
+
+  function etiquetaReserva(r, sem, ctx) {
+    var podeTirar = r.minha || ctx.d.souGestor;
+    var riscado = !!estado.cancelar[r.id];
+    var e = el('<span class="etiqueta ' + (r.minha ? 'cheia' : '') + (riscado ? ' riscado' : '') + '">' + esc(r.minha ? 'Você' : r.nome) +
+      (podeTirar ? '<button type="button" aria-label="' + (riscado ? 'Desfazer' : 'Cancelar reserva de ' + esc(r.nome)) + '" title="' + (riscado ? 'Desfazer' : 'Cancelar reserva') + '">' + (riscado ? '↶' : '✕') + '</button>' : '') + '</span>');
+    if (podeTirar) e.querySelector('button').addEventListener('click', function () { alternarCancelar(r, sem, ctx); });
+    return e;
+  }
+
+  function etiquetaPendente(e, sem, ctx) {
+    var t = el('<span class="etiqueta pendente">' + esc(e.email === USUARIO.email ? 'Você' : e.nome) +
+      '<button type="button" aria-label="Desfazer" title="Desfazer">✕</button></span>');
+    t.querySelector('button').addEventListener('click', function () { alternarReservar(sem, e.email, e.nome, ctx); });
+    return t;
+  }
+
+  function controleReservar(sem, ctx) {
+    var pendentes = pendentesDaSemana(sem);
+    var jaTem = function (email) {
+      return sem.reservas.some(function (r) { return r.email === email && !estado.cancelar[r.id]; }) ||
+        pendentes.some(function (e) { return e.email === email; });
+    };
+    var livre = sem.reservas.filter(function (r) { return !estado.cancelar[r.id]; }).length + pendentes.length < sem.vagas;
+    if (!ctx.d.souGestor) {
+      if (jaTem(USUARIO.email)) return null;
+      var b = el('<button type="button" class="botao ' + (livre ? '' : 'contorno ') + 'pequeno">' + (livre ? 'Reservar esta semana' : 'Reservar mesmo assim') + '</button>');
+      b.addEventListener('click', function () { alternarReservar(sem, USUARIO.email, USUARIO.nomeExibicao, ctx); });
+      return b;
+    }
+    var opcoes = ctx.d.pessoas.filter(function (p) { return !jaTem(p.email); });
+    if (!opcoes.length) return null;
+    var sel = el('<select class="escolher" aria-label="Reservar para"><option value="">' + (livre ? 'Reservar para…' : 'Reservar mesmo assim para…') + '</option>' +
+      opcoes.map(function (p) { return '<option value="' + esc(p.email) + '">' + esc(p.email === USUARIO.email ? 'Eu (' + p.nome + ')' : p.nome + ' · ' + nomeSetor(p.setor)) + '</option>'; }).join('') +
+      '</select>');
+    sel.addEventListener('change', function () {
+      var p = opcoes.filter(function (x) { return x.email === sel.value; })[0];
+      if (p) alternarReservar(sem, p.email, p.nome, ctx);
+    });
+    return sel;
+  }
+
+  function cartaoSemana(sem, ctx) {
+    var classes = ['cartao', 'cartao-ho'];
+    if (sem.atual) classes.push('atual');
+    if (sem.passada) classes.push('passada');
+    if (sem.presencial) classes.push('presencial');
+    else if (sem.minha) classes.push('minha');
+    if (temPendencia(sem)) classes.push('pendente');
+    var c = el('<div class="' + classes.join(' ') + '" data-semana="' + esc(sem.inicio) + '"><div class="conteudo"></div><div class="lado"></div></div>');
+    var conteudo = c.querySelector('.conteudo');
+    var lado = c.querySelector('.lado');
+
+    var sub = [];
+    if (sem.atual) sub.push('esta semana');
+    if (sem.feriados.length) sub.push('feriado: ' + sem.feriados.join(', '));
+    conteudo.appendChild(el('<div class="semana">' + esc(sem.titulo) + (sub.length ? '<small>' + esc(sub.join(' · ')) + '</small>' : '') + '</div>'));
+
+    if (sem.presencial) {
+      conteudo.appendChild(el('<div class="detalhe"><strong>Semana presencial</strong> · ' + esc(sem.presencialDescricao || 'Definida pelo gestor') + '. Reservar gera aviso.</div>'));
+    }
+
+    var etiquetas = el('<div class="etiquetas"></div>');
+    sem.reservas.forEach(function (r) { etiquetas.appendChild(etiquetaReserva(r, sem, ctx)); });
+    pendentesDaSemana(sem).forEach(function (e) { etiquetas.appendChild(etiquetaPendente(e, sem, ctx)); });
+    if (!etiquetas.children.length) etiquetas.innerHTML = '<span class="vazio">Semana livre</span>';
+    conteudo.appendChild(etiquetas);
+
+    var detalhes = sem.reservas.map(function (r) {
+      return (r.minha ? 'Você' : r.nome) + (r.setor ? ' · ' + nomeSetor(r.setor) : '') + (r.importada ? ' · importada' : (r.reservadaEm ? ' · reservada em ' + r.reservadaEm.replace(' ', ' às ') : ''));
+    });
+    if (detalhes.length) conteudo.appendChild(el('<div class="detalhe">' + esc(detalhes.join(' — ')) + '</div>'));
+
+    if (sem.problema) lado.appendChild(el('<span class="etiqueta ambar pilula">' + esc(sem.problema) + '</span>'));
+    if (!sem.passada) {
+      var controle = controleReservar(sem, ctx);
+      if (controle) lado.appendChild(controle);
+    }
+    return c;
+  }
+})();
+</script>

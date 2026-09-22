@@ -8,7 +8,7 @@ Coloque aqui (NÃO commitar, contêm dados pessoais):
 ## Particularidades da planilha antiga (para a importação)
 - Grade pessoas × datas marcada com "x"/"X". Setor não existe como dado (só cores, inconsistentes entre abas).
 - Nomes variam entre abas: "Pedro D"/"Pedro D.", "Victor " (espaço), "Felipe", "Felipe R.", "Felipe N.", "Athur" (= Arthur). Mapear para os e-mails do cadastro.
-- **Sábados:** duas colunas por sábado, "(11:00)" = turno 8h–11h e "(12:00)" = turno 9h–12h. Células podem ter "Férias" ou "TREINAMENTO". O contador "Qtd. Op." só soma as linhas 2 a 13 (bug).
+- **Sábados:** duas colunas por sábado, "(11:00)" = turno 8h–11h e "(12:00)" = turno 9h–12h. Células podem ter "Férias" ou "TREINAMENTO". Um sábado é treinamento da **equipe** (bloqueado, cinza) quando pelo menos `Config > TREINAMENTO_EQUIPE_MIN` pessoas (padrão 5) têm texto com "treinamento" nele; com menos, são treinamentos individuais. Senão, cada texto é uma tarefa da pessoa naquele sábado e vira escala normal, com o texto na observação; se o texto fala em treinamento ("Treinamento", "treinamento contab."), a escala fica marcada como "em treinamento" (a pessoa vai, mas não atende). O contador "Qtd. Op." só soma as linhas 2 a 13 (bug).
 - **Plantão Meio dia:** grade semanal fixa (segunda a sexta). Nota: "organização sempre na daily de segunda". Intervalos 11:00–12:30 e 12:30–14:00.
 - **Plantões 2026:** uma coluna por dia útil; "FERIADO" em dias de feriado; coluna TOTAL.
 - **HomeOffice:** uma coluna por dia útil; "X" = home office; "PRESENCIAL" = semana presencial obrigatória.

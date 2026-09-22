@@ -33,7 +33,7 @@ var CABECALHOS = {};
 CABECALHOS[ABA_CONFIG] = ['Chave', 'Valor', 'Descrição'];
 CABECALHOS[ABA_LANCAMENTOS] = [
   'ID', 'Tipo', 'E-mail', 'Data início', 'Data fim', 'Turno', 'Status',
-  'Criado por', 'Criado em', 'Atualizado em', 'ID evento agenda', 'Observação'
+  'Criado por', 'Criado em', 'Atualizado em', 'ID evento agenda', 'Observação', 'Em treinamento'
 ];
 CABECALHOS[ABA_BLOQUEIOS] = ['ID', 'Tipo', 'Data início', 'Data fim', 'Descrição'];
 CABECALHOS[ABA_FILA_HO] = ['E-mail', 'Setor', 'Tipo', 'Semana', 'Registrado em'];
@@ -50,7 +50,8 @@ CABECALHOS[ABA_LOG_NOTIFICACOES] = [
 CABECALHOS[ABA_MAPA_NOMES] = ['Nome na planilha antiga', 'E-mail', 'Observação'];
 CABECALHOS[ABA_RELATORIO_IMPORTACAO] = ['Seção', 'Item', 'Detalhe'];
 // Cada pessoa liga/desliga suas notificações no app; sem linha = Sim/Sim
-CABECALHOS[ABA_PREFERENCIAS] = ['E-mail', 'Receber e-mails', 'Convites na agenda', 'Atualizado em'];
+CABECALHOS[ABA_PREFERENCIAS] = ['E-mail', 'Receber e-mails', 'Convites na agenda', 'Atualizado em',
+  'Avisos sábados', 'Avisos meio-dia', 'Avisos plantão', 'Avisos home office', 'Avisos férias'];
 
 // Cabeçalhos esperados nas abas de cadastro (só para validar no setup)
 CABECALHOS[ABA_PESSOAS] = [
@@ -69,8 +70,9 @@ var TIPO = {
   FERIAS: 'FERIAS'
 };
 
-// Turnos do sábado. Com "h" para o Planilhas não converter em data ("8-11" viraria 11/ago).
-var TURNO = { T8_11: '8h-11h', T9_12: '9h-12h' };
+// Turnos. Com "h" para o Planilhas não converter em data ("8-11" viraria 11/ago).
+// Sábado (escala): 8–11 e 9–12. Plantão: 18–20 em dia útil, 13–17 no sábado.
+var TURNO = { T8_11: '8h-11h', T9_12: '9h-12h', T18_20: '18h-20h', T13_17: '13h-17h' };
 
 // Status de lançamento
 var STATUS = {
@@ -80,7 +82,8 @@ var STATUS = {
   RASCUNHO: 'rascunho',
   SOLICITADA: 'solicitada',
   APROVADA: 'aprovada',
-  ENCAMINHADA: 'encaminhada'
+  ENCAMINHADA: 'encaminhada',
+  DEVOLVIDA: 'devolvida' // gestor devolveu para ajuste (motivo na observação)
 };
 
 // Tipos de bloqueio
@@ -109,12 +112,17 @@ var CONFIG_PADRAO = [
   ['SABADO_MIN', 6, 'Aviso se o sábado tiver menos pessoas que isso (somando os dois turnos)'],
   ['SABADO_MAX', 8, 'Aviso se o sábado tiver mais pessoas que isso'],
   ['VAGAS_MEIO_DIA', 2, 'Pessoas por dia no meio-dia; diferente disso gera aviso'],
-  ['VAGAS_PLANTAO', 1, 'Pessoas por dia no plantão; diferente disso gera aviso'],
+  ['VAGAS_PLANTAO', 1, 'Pessoas por dia no plantão de segunda a sexta (18h–20h); diferente disso gera aviso'],
+  ['VAGAS_PLANTAO_SABADO', 1, 'Pessoas no plantão de sábado (13h–17h); diferente disso gera aviso'],
   ['VAGAS_HOME_OFFICE', 1, 'Pessoas da equipe em home office por semana'],
+  ['HO_FORA_DA_FILA', '', 'E-mails (separados por vírgula) de quem não entra na fila de home office, ex.: quem já trabalha em home office'],
   ['ANTECEDENCIA_FERIAS_DIAS', 35, 'Aviso se as férias forem pedidas com menos dias de antecedência que isso'],
   ['FERIAS_AVISO_PRAZO_DIAS', 60, 'Aviso quando o prazo limite para gozo estiver a menos dias que isso'],
+  ['FERIAS_SOBREPOSICAO_MIN_DIAS', 6, 'Sobreposição de férias só vira aviso/pendência quando duas pessoas coincidem por pelo menos esta quantidade de dias'],
+  ['FERIAS_REGRAS_CLT', NAO, 'Sim = avisa sobre fracionamento da CLT (um período de 14+ dias, demais de 5+, não começar 2 dias antes de feriado/folga). Ligar depois de confirmar com o RH'],
   // Importação da planilha antiga (só usada uma vez)
   ['ID_PLANILHA_ANTIGA', '', 'ID da planilha antiga convertida para Planilha Google (o trecho entre /d/ e /edit na URL)'],
   ['DATA_INICIO_IMPORTACAO', '2026-01-01', 'Só importa lançamentos a partir desta data'],
-  ['SEMANA_MEIO_DIA_IMPORTACAO', '', 'Segunda-feira da semana em que a grade "Plantão Meio dia" vale (vazio = semana atual)']
+  ['SEMANA_MEIO_DIA_IMPORTACAO', '', 'Segunda-feira da semana em que a grade "Plantão Meio dia" vale (vazio = semana atual)'],
+  ['TREINAMENTO_EQUIPE_MIN', 5, 'Importação: sábado com pelo menos esta quantidade de pessoas em treinamento é treinamento da equipe (fica bloqueado); com menos, são treinamentos individuais']
 ];

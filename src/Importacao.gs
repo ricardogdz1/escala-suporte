@@ -35,6 +35,44 @@ function importarDefinitivo() {
   Logger.log(r.resumo.join('\n'));
 }
 
+/**
+ * Corrige importações feitas antes de 21/09/2026, quando qualquer texto na célula do sábado
+ * virava bloqueio de TREINAMENTO. Apaga todos os bloqueios de treinamento importados, marca
+ * "Em treinamento" nas escalas importadas cujo texto fala em treinamento e roda a importação
+ * de novo (idempotente) para criar o que faltar com a regra atual.
+ */
+function corrigirTreinamentosImportados() {
+  var aba = aba_(ABA_BLOQUEIOS);
+  var linhas = lerAba_(ABA_BLOQUEIOS)
+    .filter(function (l) {
+      return String(l['Tipo'] || '').trim() === BLOQUEIO.TREINAMENTO &&
+        String(l['Descrição'] || '').indexOf(MARCA_IMPORTADO) >= 0;
+    })
+    .map(function (l) { return l._linha; })
+    .sort(function (a, b) { return b - a; });
+  linhas.forEach(function (n) { aba.deleteRow(n); });
+  esquecerAba_(ABA_BLOQUEIOS);
+
+  var marcadas = 0;
+  lerAba_(ABA_LANCAMENTOS).forEach(function (l) {
+    if (String(l['Tipo'] || '').trim() !== TIPO.SABADO) return;
+    var obs = String(l['Observação'] || '');
+    if (obs.indexOf(MARCA_IMPORTADO) < 0 || !/treinamento/i.test(obs) || ehSim_(l['Em treinamento'])) return;
+    atualizarLinha_(ABA_LANCAMENTOS, l._linha, { 'Em treinamento': 'Sim' });
+    marcadas++;
+  });
+
+  var r = executarImportacao_(true);
+  var resumo = [
+    'Bloqueios de treinamento importados apagados: ' + linhas.length,
+    'Escalas já existentes marcadas como em treinamento: ' + marcadas,
+    '',
+    'Importação:'
+  ].concat(r.resumo, ['', 'Detalhes na aba ' + ABA_RELATORIO_IMPORTACAO + '.']).join(String.fromCharCode(10));
+  Logger.log(resumo);
+  try { SpreadsheetApp.getUi().alert('Corrigir treinamentos importados', resumo, SpreadsheetApp.getUi().ButtonSet.OK); } catch (e) { /* rodou fora da planilha */ }
+}
+
 function apagarImportacao() {
   var total = 0;
   total += apagarLinhasOnde_(ABA_LANCAMENTOS, 'Observação', MARCA_IMPORTADO);
@@ -131,7 +169,20 @@ function adicionarBloqueio_(ctx, tipo, inicio, fim, descricao) {
 
 /** Lê a matriz inteira da aba (valores) e devolve {cabecalho, linhasPessoas:[{nome, linha, valores}]}. */
 function lerGrade_(aba, linhaCabecalho, primeiraLinhaPessoa) {
-  var valores = aba.getDataRange().getValues();
+  var intervalo = aba.getDataRange();
+  var valores = intervalo.getValues();
+  // Célula mesclada (ex.: "TREINAMENTO" ocupando a coluna inteira): só a primeira célula tem valor;
+  // copia para as demais, senão só a primeira pessoa da coluna seria vista como em treinamento.
+  intervalo.getMergedRanges().forEach(function (m) {
+    var l0 = m.getRow() - 1, c0 = m.getColumn() - 1;
+    var v = (valores[l0] || [])[c0];
+    if (v === '' || v === null || v === undefined) return;
+    for (var l = l0; l < l0 + m.getNumRows(); l++) {
+      for (var c = c0; c < c0 + m.getNumColumns(); c++) {
+        if (valores[l] && (valores[l][c] === '' || valores[l][c] === null)) valores[l][c] = v;
+      }
+    }
+  });
   var cabecalho = valores[linhaCabecalho - 1] || [];
   var pessoas = [];
   var vaziasSeguidas = 0;
@@ -166,6 +217,8 @@ function importarSabados_(aba, ctx) {
   var g = lerGrade_(aba, 1, 2);
   var colunas = g.cabecalho.map(cabecalhoSabado_);
 
+  // 1ª passada: junta as marcações por sábado, para decidir se o treinamento é da equipe inteira
+  var porData = {};
   g.pessoas.forEach(function (p) {
     var email = ctx.resolvedor.resolver(p.nome, ABAS_ANTIGAS.sabados);
     for (var c = 1; c < colunas.length; c++) {
@@ -173,21 +226,57 @@ function importarSabados_(aba, ctx) {
       var v = String(p.valores[c] || '').trim();
       if (!col || !v || col.data.getTime() < ctx.dataInicio.getTime()) continue;
 
-      if (ehMarcaX_(v)) {
-        if (email && email !== MAPA_IGNORAR) {
-          adicionarLancamento_(ctx, { tipo: TIPO.SABADO, email: email, inicio: col.data, turno: col.turno, status: STATUS.ATIVO });
-          if (!col.turno) ctx.relatorio.push(['Sábado sem turno', p.nome + ' em ' + formatarDataBr_(col.data), 'coluna antiga sem "(11:00)/(12:00)"; importado sem turno']);
-        }
-      } else if (/^feriad/i.test(v)) {
-        adicionarBloqueio_(ctx, BLOQUEIO.FERIADO, col.data, col.data, v);
-      } else if (/^f[ée]rias/i.test(v)) {
-        // férias vêm da aba Férias
-      } else if (/^#/.test(v)) {
+      if (/^feriad/i.test(v)) { adicionarBloqueio_(ctx, BLOQUEIO.FERIADO, col.data, col.data, v); continue; }
+      if (/^f[ée]rias/i.test(v)) continue; // férias vêm da aba Férias
+      if (/^#/.test(v)) {
         ctx.relatorio.push(['Célula com erro', aba.getName() + ' linha ' + p.linha + ' (' + formatarDataBr_(col.data) + ')', v]);
-      } else {
-        adicionarBloqueio_(ctx, BLOQUEIO.TREINAMENTO, col.data, col.data, v);
+        continue;
       }
+      var chave = formatarDataIso_(col.data);
+      (porData[chave] = porData[chave] || []).push({
+        pessoa: p, email: email, col: col, valor: v,
+        marcaX: ehMarcaX_(v),
+        treinamento: /treinamento/i.test(v)
+      });
     }
+  });
+
+  // 2ª passada: um sábado é TREINAMENTO da equipe (bloqueado) quando pelo menos
+  // Config > TREINAMENTO_EQUIPE_MIN pessoas estão em treinamento nele (num treinamento da equipe a
+  // planilha antiga marca quase todo mundo; um treinamento específico tem 1–3 pessoas).
+  // Cada pessoa vira escala normal, marcada "em treinamento" quando o texto dela diz isso.
+  var minimoEquipe = Math.max(1, obterConfigNumero('TREINAMENTO_EQUIPE_MIN') || 5);
+  Object.keys(porData).sort().forEach(function (chave) {
+    var marcas = porData[chave];
+    var data = marcas[0].col.data;
+    var pessoasNoDia = {};
+    var pessoasEmTreinamento = {};
+    marcas.forEach(function (m) {
+      pessoasNoDia[m.pessoa.nome] = true;
+      if (m.treinamento) pessoasEmTreinamento[m.pessoa.nome] = true;
+    });
+    var total = Object.keys(pessoasNoDia).length;
+    var emTreinamento = Object.keys(pessoasEmTreinamento).length;
+    var equipeInteira = emTreinamento >= minimoEquipe;
+    if (equipeInteira) adicionarBloqueio_(ctx, BLOQUEIO.TREINAMENTO, data, data, 'TREINAMENTO');
+
+    var textos = {};
+    marcas.forEach(function (m) { if (!m.marcaX) textos[m.valor] = true; });
+    ctx.relatorio.push(['Resumo do sábado', formatarDataBr_(data),
+      total + ' pessoa(s) marcada(s), ' + emTreinamento + ' em treinamento (mínimo para equipe: ' + minimoEquipe + ') → ' +
+      (equipeInteira ? 'TREINAMENTO DA EQUIPE (bloqueado)' : 'sábado normal') +
+      (Object.keys(textos).length ? ' · textos: ' + Object.keys(textos).join(' | ') : '')]);
+
+    marcas.forEach(function (m) {
+      if (!m.email || m.email === MAPA_IGNORAR) return;
+      var l = { tipo: TIPO.SABADO, email: m.email, inicio: data, turno: m.col.turno, status: STATUS.ATIVO };
+      if (!m.marcaX) { l.observacao = m.valor; l.treinamento = m.treinamento; }
+      adicionarLancamento_(ctx, l);
+      if (!m.col.turno) ctx.relatorio.push(['Sábado sem turno', m.pessoa.nome + ' em ' + formatarDataBr_(data), 'coluna antiga sem "(11:00)/(12:00)"; importado sem turno']);
+      if (!m.marcaX && !equipeInteira) {
+        ctx.relatorio.push([m.treinamento ? 'Sábado em treinamento' : 'Sábado com tarefa', m.pessoa.nome + ' em ' + formatarDataBr_(data), m.valor]);
+      }
+    });
   });
 }
 
@@ -375,11 +464,12 @@ function gravarImportacao_(ctx) {
     if (existentes[chave]) { contadores.ignorados++; return; }
     existentes[chave] = true;
     linhas.push([gerarId_(), l.tipo, l.email, l.inicio, l.fim, l.turno || '', l.status,
-      usuario.email, agora, agora, '', MARCA_IMPORTADO]);
+      usuario.email, agora, agora, '', (l.observacao ? l.observacao + ' · ' : '') + MARCA_IMPORTADO, l.treinamento ? 'Sim' : 'Não']);
   });
   if (linhas.length) {
     var abaL = aba_(ABA_LANCAMENTOS);
     abaL.getRange(abaL.getLastRow() + 1, 1, linhas.length, linhas[0].length).setValues(linhas);
+    esquecerAba_(ABA_LANCAMENTOS);
   }
   contadores.lancamentos = linhas.length;
 
@@ -397,6 +487,7 @@ function gravarImportacao_(ctx) {
   if (linhasB.length) {
     var abaB = aba_(ABA_BLOQUEIOS);
     abaB.getRange(abaB.getLastRow() + 1, 1, linhasB.length, 5).setValues(linhasB);
+    esquecerAba_(ABA_BLOQUEIOS);
   }
   contadores.bloqueios = linhasB.length;
 
@@ -411,6 +502,7 @@ function gravarImportacao_(ctx) {
   if (linhasS.length) {
     var abaS = aba_(ABA_SALDO_FERIAS);
     abaS.getRange(abaS.getLastRow() + 1, 1, linhasS.length, 4).setValues(linhasS);
+    esquecerAba_(ABA_SALDO_FERIAS);
   }
   contadores.saldos = linhasS.length;
 

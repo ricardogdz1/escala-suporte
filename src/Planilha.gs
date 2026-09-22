@@ -18,10 +18,29 @@ function aba_(nome) {
 }
 
 /**
+ * Memória de uma execução: cada aba é lida da planilha no máximo uma vez por chamada do cliente
+ * (getValues custa 100–300 ms). Quem grava chama esquecerAba_() para a próxima leitura ser fresca.
+ * Apps Script cria um contexto novo a cada execução, então isso nunca vaza entre chamadas.
+ */
+var abasLidas_ = {};
+
+function esquecerAba_(nome) {
+  delete abasLidas_[nome];
+}
+
+/**
  * Lê uma aba inteira como lista de objetos {cabeçalho: valor}.
  * Ignora linhas totalmente vazias. Cada objeto recebe também _linha (número da linha na planilha).
+ * Quem chama não deve alterar os objetos retornados (são compartilhados dentro da execução).
  */
 function lerAba_(nome) {
+  if (abasLidas_[nome]) return abasLidas_[nome];
+  var registros = lerAbaDaPlanilha_(nome);
+  abasLidas_[nome] = registros;
+  return registros;
+}
+
+function lerAbaDaPlanilha_(nome) {
   var aba = aba_(nome);
   var ultimaLinha = aba.getLastRow();
   var ultimaColuna = aba.getLastColumn();
@@ -51,6 +70,7 @@ function anexarLinha_(nome, obj) {
   var cabecalho = cabecalhoDaAba_(aba);
   var linha = cabecalho.map(function (c) { return obj[c] !== undefined ? obj[c] : ''; });
   aba.appendRow(linha);
+  esquecerAba_(nome);
   return aba.getLastRow();
 }
 
@@ -62,6 +82,7 @@ function atualizarLinha_(nome, numeroLinha, obj) {
     var col = cabecalho.indexOf(chave);
     if (col >= 0) aba.getRange(numeroLinha, col + 1).setValue(obj[chave]);
   });
+  esquecerAba_(nome);
 }
 
 function cabecalhoDaAba_(aba) {

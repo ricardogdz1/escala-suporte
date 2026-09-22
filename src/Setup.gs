@@ -180,6 +180,17 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Escala Suporte')
     .addItem('Preparar/atualizar abas (setup)', 'setup')
-    .addItem('Recarregar configurações', 'limparCacheConfig')
+    .addItem('Recarregar configurações e cadastro', 'limparCaches')
+    .addItem('Corrigir treinamentos importados', 'corrigirTreinamentosImportados')
     .addToUi();
+}
+
+/**
+ * Gatilho simples: quando alguém edita Config ou o cadastro direto na planilha,
+ * limpa o cache para o app refletir a mudança na hora (sem esperar os 5 minutos).
+ */
+function onEdit(e) {
+  var nome = e && e.range && e.range.getSheet().getName();
+  if (nome === ABA_CONFIG) limparCacheConfig();
+  else if (nome === ABA_PESSOAS || nome === ABA_SETORES || nome === ABA_SETORES_EXTRAS) limparCacheCadastro();
 }

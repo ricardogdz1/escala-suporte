@@ -24,9 +24,10 @@
         </div>
       </div>
       <nav aria-label="Telas">
-        <button class="menu-item" data-tela="painel">Painel <span class="contador oculto" id="contadorAvisos">0</span></button>
+        <button class="menu-item" data-tela="painel">Painel</button>
         <button class="menu-item" data-tela="sabados">Sábados</button>
-        <button class="menu-item" data-tela="meiodia">Meio-dia e plantão</button>
+        <button class="menu-item" data-tela="meiodia">Meio-dia</button>
+        <button class="menu-item" data-tela="plantao">Plantão</button>
         <button class="menu-item" data-tela="homeoffice">Home office</button>
         <button class="menu-item" data-tela="ferias">Férias</button>
       </nav>
@@ -38,7 +39,7 @@
             <div class="detalhe"><?= usuario.setor ?> · <?= usuario.perfil ?></div>
           </div>
         </div>
-        <button type="button" class="botao-rodape" id="botaoPreferencias">Notificações</button>
+        <button type="button" class="botao-rodape" id="botaoPreferencias">Configurações</button>
       </div>
     </aside>
     <div class="cortina oculto" id="cortina"></div>
@@ -63,5 +64,8 @@
   <?!= incluir('Script') ?>
   <?!= incluir('TelaPainel') ?>
   <?!= incluir('TelaSabados') ?>
+  <?!= incluir('TelaSemanal') ?>
+  <?!= incluir('TelaHomeOffice') ?>
+  <?!= incluir('TelaFerias') ?>
 </body>
 </html>

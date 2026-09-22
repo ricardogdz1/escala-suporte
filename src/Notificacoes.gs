@@ -6,7 +6,9 @@
  *  - todo e-mail vai só para EMAIL_TESTE, com o assunto prefixado e os
  *    destinatários originais listados no corpo;
  *  - todo evento vai para o calendário ID_CALENDARIO_TESTE (ou a agenda da
- *    conta que roda o sistema, se vazio) e o único convidado é EMAIL_TESTE.
+ *    conta que roda o sistema, se vazio) e o único participante é EMAIL_TESTE.
+ * Eventos entram na agenda da pessoa como compromisso já confirmado (participante com presença
+ * "aceita", sem e-mail de convite), via serviço avançado do Calendar. Se ele falhar, cai no CalendarApp.
  * Tudo que sai fica registrado na aba LogNotificacoes.
  */
 
@@ -71,17 +73,26 @@ function enviarEmail_(o) {
 
 // ---------- Agenda ----------
 
-/** Calendário onde os eventos são criados, conforme o modo. */
-function calendario_() {
+/** ID do calendário onde os eventos são criados, conforme o modo. */
+function idCalendario_() {
   var id = String(obterConfig(modoTeste() ? 'ID_CALENDARIO_TESTE' : 'ID_CALENDARIO_PRODUCAO')).trim();
   if (!id) {
-    if (modoTeste()) return CalendarApp.getDefaultCalendar();
+    if (modoTeste()) return CalendarApp.getDefaultCalendar().getId();
     throw new Error('Config > ID_CALENDARIO_PRODUCAO está vazio. Cadastre o calendário "Escala Suporte".');
   }
+  return id;
+}
+
+/** Calendário (CalendarApp) onde os eventos são criados, conforme o modo. */
+function calendario_() {
+  var id = idCalendario_();
   var cal = CalendarApp.getCalendarById(id);
   if (!cal) throw new Error('Calendário não encontrado ou sem acesso: ' + id);
   return cal;
 }
+
+function dataIsoLocal_(d) { return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd'); }
+function dataHoraRfc_(d) { return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss"); }
 
 /**
  * Cria um evento e devolve o ID (guardar em Lancamentos > ID evento agenda).
@@ -90,28 +101,43 @@ function calendario_() {
  * @return {string} ID do evento
  */
 function criarEvento_(o) {
-  var cal = calendario_();
   var convidadosOriginais = listaEmails_(o.convidados);
   var convidados = convidadosReais_(convidadosOriginais);
+  var fimExclusivo = new Date(o.fim.getFullYear(), o.fim.getMonth(), o.fim.getDate() + 1); // dia inteiro: fim exclusivo
+  var id;
 
-  var opcoes = { description: o.descricao || '' };
-  if (convidados.length) {
-    opcoes.guests = convidados.join(',');
-    opcoes.sendInvites = true;
-  }
-
-  var evento;
-  if (o.diaInteiro) {
-    // fim é exclusivo no CalendarApp: dia seguinte ao último dia
-    var fimExclusivo = new Date(o.fim.getFullYear(), o.fim.getMonth(), o.fim.getDate() + 1);
-    evento = cal.createAllDayEvent(o.titulo, o.inicio, fimExclusivo, opcoes);
-  } else {
-    evento = cal.createEvent(o.titulo, o.inicio, o.fim, opcoes);
+  try {
+    // Serviço avançado: participante já com presença aceita e sem e-mail de convite (compromisso certo, não convite)
+    var recurso = {
+      summary: o.titulo,
+      description: o.descricao || '',
+      attendees: convidados.map(function (e) { return { email: e, responseStatus: 'accepted' }; }),
+      guestsCanInviteOthers: false,
+      reminders: { useDefault: true }
+    };
+    if (o.diaInteiro) {
+      recurso.start = { date: dataIsoLocal_(o.inicio) };
+      recurso.end = { date: dataIsoLocal_(fimExclusivo) };
+    } else {
+      var fuso = Session.getScriptTimeZone();
+      recurso.start = { dateTime: dataHoraRfc_(o.inicio), timeZone: fuso };
+      recurso.end = { dateTime: dataHoraRfc_(o.fim), timeZone: fuso };
+    }
+    var criado = Calendar.Events.insert(recurso, idCalendario_(), { sendUpdates: 'none' });
+    id = criado.iCalUID || criado.id;
+  } catch (e) {
+    // sem o serviço avançado (ou erro nele): cria pelo CalendarApp, ainda sem e-mail de convite
+    var cal = calendario_();
+    var opcoes = { description: o.descricao || '' };
+    if (convidados.length) { opcoes.guests = convidados.join(','); opcoes.sendInvites = false; }
+    var evento = o.diaInteiro ? cal.createAllDayEvent(o.titulo, o.inicio, fimExclusivo, opcoes) : cal.createEvent(o.titulo, o.inicio, o.fim, opcoes);
+    id = evento.getId();
+    registrarNotificacao_('EVENTO', o.origem, convidadosOriginais.join(', '), convidados.join(', '), o.titulo, 'API falhou (' + e.message + '); criado pelo CalendarApp');
   }
 
   registrarNotificacao_('EVENTO', o.origem, convidadosOriginais.join(', '), convidados.join(', '),
-    o.titulo + ' (' + formatarDataBr_(o.inicio) + ')', 'criado ' + evento.getId());
-  return evento.getId();
+    o.titulo + ' (' + formatarDataBr_(o.inicio) + ')', 'criado ' + id);
+  return id;
 }
 
 /** Atualiza título/datas/descrição de um evento existente. Retorna false se não achou. */
@@ -152,8 +178,8 @@ function buscarEvento_(idEvento) {
 }
 
 /**
- * Convidados que de fato entram no evento: tira quem desligou convites na agenda;
- * em modo teste, o único convidado possível é EMAIL_TESTE.
+ * Participantes que de fato entram no evento: tira quem não ligou "eventos na agenda" nas configurações;
+ * em modo teste, o único participante possível é EMAIL_TESTE.
  */
 function convidadosReais_(convidados) {
   var prefs = mapaPreferencias_();

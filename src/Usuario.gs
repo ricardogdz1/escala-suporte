@@ -3,8 +3,50 @@
  * O e-mail corporativo é a chave de tudo; nome nunca é usado como identificador.
  */
 
-/** Lista as pessoas do cadastro (aba Pessoas + setores extras), ativas ou não. */
+/**
+ * O cadastro (Pessoas, Setores, Setores extras) muda raramente e é lido em toda chamada do cliente,
+ * então fica 5 minutos no CacheService. O gatilho onEdit da planilha (Setup.gs) limpa o cache
+ * quando o gestor edita essas abas, e o menu "Recarregar configurações" também.
+ */
+var CACHE_CADASTRO_CHAVE = 'cadastro_v1';
+var CACHE_CADASTRO_SEGUNDOS = 300;
+var cadastroDaExecucao_ = null; // evita consultar o CacheService várias vezes na mesma chamada
+
+function obterCadastro_() {
+  if (cadastroDaExecucao_) return cadastroDaExecucao_;
+
+  var cache = CacheService.getScriptCache();
+  var emCache = cache.get(CACHE_CADASTRO_CHAVE);
+  if (emCache) {
+    cadastroDaExecucao_ = JSON.parse(emCache);
+    return cadastroDaExecucao_;
+  }
+
+  var cadastro = { pessoas: lerPessoasDaPlanilha_(), setores: lerSetoresDaPlanilha_() };
+  try {
+    cache.put(CACHE_CADASTRO_CHAVE, JSON.stringify(cadastro), CACHE_CADASTRO_SEGUNDOS);
+  } catch (e) {
+    // cache é só aceleração: se falhar (ex.: valor grande demais), segue lendo da planilha
+  }
+  cadastroDaExecucao_ = cadastro;
+  return cadastro;
+}
+
+function limparCacheCadastro() {
+  cadastroDaExecucao_ = null;
+  CacheService.getScriptCache().remove(CACHE_CADASTRO_CHAVE);
+}
+
+/** Lista as pessoas do cadastro (aba Pessoas + setores extras), ativas ou não. Objetos novos a cada chamada. */
 function listarPessoas_() {
+  return obterCadastro_().pessoas.map(function (p) {
+    var copia = {};
+    Object.keys(p).forEach(function (k) { copia[k] = k === 'setoresExtras' ? p[k].slice() : p[k]; });
+    return copia;
+  });
+}
+
+function lerPessoasDaPlanilha_() {
   var extras = {};
   lerAba_(ABA_SETORES_EXTRAS).forEach(function (l) {
     var email = normalizarEmail_(l['E-mail corporativo']);
@@ -56,6 +98,10 @@ function nomeDe_(mapa, email) {
 
 /** Setores cadastrados: [{nome, ativo}]. */
 function listarSetores_() {
+  return obterCadastro_().setores.map(function (s) { return { nome: s.nome, ativo: s.ativo }; });
+}
+
+function lerSetoresDaPlanilha_() {
   return lerAba_(ABA_SETORES)
     .map(function (l) {
       return { nome: String(l['Setor'] || '').trim(), ativo: ehSim_(l['Ativo']) };

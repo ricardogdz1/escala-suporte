@@ -10,8 +10,13 @@
   var conteudo = document.getElementById('conteudo');
 
   // ---------- Chamada ao servidor ----------
+  /** Últimas respostas de leitura, por função+argumentos. Qualquer gravação limpa tudo. */
+  var respostasGuardadas = {};
+  function ehLeitura(funcao) { return /^(obter|contar|listar)/.test(funcao); }
+
   window.api = function (funcao) {
     var args = Array.prototype.slice.call(arguments, 1);
+    if (!ehLeitura(funcao)) respostasGuardadas = {};
     return new Promise(function (resolver, rejeitar) {
       var chamada = google.script.run
         .withSuccessHandler(resolver)
@@ -19,6 +24,22 @@
       chamada[funcao].apply(chamada, args);
     });
   };
+
+  /**
+   * Leitura com resposta guardada: se já existe uma resposta anterior para os mesmos argumentos,
+   * chama aoResponder(dados, false) na hora (tela aparece sem esperar) e, quando o servidor
+   * responder, aoResponder(dados, true). Retorna a promessa da resposta do servidor.
+   */
+  window.apiGuardada = function (funcao, args, aoResponder) {
+    var chave = funcao + ':' + JSON.stringify(args);
+    if (respostasGuardadas[chave]) aoResponder(respostasGuardadas[chave], false);
+    return api.apply(null, [funcao].concat(args)).then(function (dados) {
+      respostasGuardadas[chave] = dados;
+      aoResponder(dados, true);
+      return dados;
+    });
+  };
+  window.limparRespostasGuardadas = function () { respostasGuardadas = {}; };
 
   // ---------- Utilitários ----------
   window.esc = function (texto) {
@@ -51,6 +72,12 @@
     var p = String(iso).split('-');
     return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
   };
+  /** Date local -> "yyyy-MM-dd". */
+  window.isoDe = function (d) {
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  };
+  /** Hoje como "yyyy-MM-dd" (para as telas pedirem sempre a mesma chave ao servidor). */
+  window.hojeIso = function () { return isoDe(new Date()); };
 
   // ---------- Mensagens ----------
   window.toast = function (mensagem, erro) {
@@ -126,6 +153,50 @@
     });
   };
 
+  // ---------- Trocas: janela "Propor troca" ----------
+  /**
+   * Abre a janela para propor a troca de um lançamento meu por um de colega (mesmo tipo).
+   * aoConcluir() é chamado depois que a proposta foi enviada.
+   */
+  window.abrirPropostaTroca = function (idLancamento, aoConcluir) {
+    var m = abrirModal('<h2>Propor troca</h2><div class="carregando">Carregando…</div>');
+    api('obterCandidatosTroca', idLancamento).then(function (d) {
+      if (!d.candidatos.length) {
+        m.innerHTML = '<h2>Propor troca</h2><p class="nota">Trocar o seu <strong>' + esc(d.meu.rotulo) + '</strong> por…</p>' +
+          '<p class="vazio" style="margin-top:12px">Nenhum colega tem lançamento desse tipo nos próximos 90 dias.</p>' +
+          '<div class="acoes"><button type="button" class="botao neutro" data-acao="fechar">Fechar</button></div>';
+        m.querySelector('[data-acao="fechar"]').addEventListener('click', fecharModal);
+        return;
+      }
+      m.innerHTML =
+        '<h2>Propor troca</h2>' +
+        '<p class="nota">Trocar o seu <strong>' + esc(d.meu.rotulo) + '</strong> por:</p>' +
+        '<div class="lista-opcoes" style="margin-top:10px;max-height:50vh;overflow:auto">' +
+          d.candidatos.map(function (c, i) {
+            return '<label class="opcao"><input type="radio" name="trocaCom" value="' + esc(c.id) + '"' + (i === 0 ? ' checked' : '') + '>' +
+              '<span class="texto"><strong>' + esc(c.rotulo) + '</strong><span>' + esc(c.nome) + '</span></span></label>';
+          }).join('') +
+        '</div>' +
+        '<p class="nota" style="margin-top:12px">A pessoa recebe um e-mail e aceita ou recusa no Painel. Ao aceitar, escala e agenda são atualizadas e o gestor é avisado.</p>' +
+        '<div class="acoes"><button type="button" class="botao neutro" data-acao="cancelar">Cancelar</button>' +
+        '<button type="button" class="botao escuro" data-acao="propor">Propor troca</button></div>';
+      m.querySelector('[data-acao="cancelar"]').addEventListener('click', fecharModal);
+      m.querySelector('[data-acao="propor"]').addEventListener('click', function () {
+        var escolhido = m.querySelector('input[name="trocaCom"]:checked');
+        if (!escolhido) return;
+        fecharModal();
+        chamarComConfirmacao('proporTroca', { meu: d.meu.id, dele: escolhido.value }, {
+          textoBotao: 'Enviar mesmo assim', titulo: 'Confirmar proposta',
+          subtitulo: 'A troca causaria os avisos abaixo. Quem aceitar também vai vê-los.'
+        }).then(function (r) {
+          if (!r) return;
+          toast('Proposta enviada' + (r.avisosIgnorados ? ' (com aviso registrado)' : '') + '.');
+          if (aoConcluir) aoConcluir();
+        }).catch(mostrarErro);
+      });
+    }).catch(function (e) { fecharModal(); mostrarErro(e); });
+  };
+
   // ---------- Navegação ----------
   var menu = document.getElementById('menu');
   var cortina = document.getElementById('cortina');
@@ -151,7 +222,7 @@
     var descricao = texto(dados && dados.descricao !== undefined ? dados.descricao : tela.descricao);
     cab.innerHTML =
       (sobrelinha ? '<div class="sobrelinha">' + esc(sobrelinha) + '</div>' : '') +
-      '<h1>' + esc(titulo) + '</h1>' +
+      (titulo ? '<h1>' + esc(titulo) + '</h1>' : '') +
       (descricao ? '<p class="descricao">' + esc(descricao) + '</p>' : '');
   };
 
@@ -187,17 +258,6 @@
     b.addEventListener('click', function () { irPara(b.dataset.tela); });
   });
 
-  // ---------- Telas ainda não construídas ----------
-  ['meiodia', 'homeoffice', 'ferias'].forEach(function (nome) {
-    var titulos = { meiodia: 'Meio-dia e plantão', homeoffice: 'Home office', ferias: 'Férias' };
-    TELAS[nome] = {
-      titulo: titulos[nome],
-      carregar: function (corpo) {
-        corpo.innerHTML = '<div class="cartao"><p class="vazio">Esta tela ainda está em construção.</p></div>';
-      }
-    };
-  });
-
   // ---------- Avatar ----------
   (function () {
     var partes = String(window.USUARIO.nomeExibicao || window.USUARIO.nome || '?').replace(/\./g, '').trim().split(/\s+/);
@@ -205,48 +265,75 @@
     document.getElementById('avatar').textContent = iniciais.toUpperCase();
   })();
 
-  // ---------- Preferências de notificação ----------
+  // ---------- Configurações (notificações + avisos do painel) ----------
+  var GRUPOS_CONFIG = [
+    { chave: 'sabados', titulo: 'Sábados', texto: 'Sábado abaixo do mínimo, acima do máximo ou com setor descoberto.' },
+    { chave: 'meiodia', titulo: 'Meio-dia', texto: 'Vagas abertas na semana atual.' },
+    { chave: 'plantao', titulo: 'Plantão', texto: 'Dias sem ninguém no plantão. Desligado por padrão: plantões são ocasionais.' },
+    { chave: 'homeoffice', titulo: 'Home office', texto: 'Mais de uma pessoa na semana ou reserva em semana presencial.' },
+    { chave: 'ferias', titulo: 'Férias', texto: 'Sobreposições, prazo limite chegando e (gestor) solicitações aguardando.' }
+  ];
+
   document.getElementById('botaoPreferencias').addEventListener('click', function () {
     alternarMenu(false);
-    var m = abrirModal(
-      '<h2>Notificações</h2>' +
-      '<p class="nota">Escolha o que você quer receber. Seus lançamentos continuam valendo do mesmo jeito.</p>' +
-      '<div class="carregando">Carregando…</div>');
+    var m = abrirModal('<h2>Configurações</h2><div class="carregando">Carregando…</div>');
     api('obterMinhasPreferencias').then(function (p) {
       m.innerHTML =
-        '<h2>Notificações</h2>' +
-        '<p class="nota">Escolha o que você quer receber. Seus lançamentos continuam valendo do mesmo jeito.</p>' +
+        '<h2>Configurações</h2>' +
+        '<h3 class="secao-config">Notificações</h3>' +
+        '<p class="nota">Seus lançamentos continuam valendo do mesmo jeito; isso só muda o que você recebe.</p>' +
         '<label class="opcao"><input type="checkbox" id="prefEmails"' + (p.emails ? ' checked' : '') + '>' +
-          '<span class="texto"><strong>Receber e-mails</strong><span>Confirmações, trocas propostas e avisos.</span></span></label>' +
+          '<span class="texto"><strong>Receber e-mails</strong><span>Confirmações, trocas propostas e decisões sobre férias.</span></span></label>' +
         '<label class="opcao"><input type="checkbox" id="prefAgenda"' + (p.agenda ? ' checked' : '') + '>' +
-          '<span class="texto"><strong>Convites na Google Agenda</strong><span>Sábados, plantões, meio-dia e home office aparecem na sua agenda.</span></span></label>' +
+          '<span class="texto"><strong>Eventos na Google Agenda</strong><span>Sábados, plantões, meio-dia, home office e férias entram na sua agenda como compromissos confirmados, sem convite.</span></span></label>' +
+        '<h3 class="secao-config">Avisos no Painel</h3>' +
+        '<p class="nota">Escolha quais pendências aparecem para você no Painel.</p>' +
+        GRUPOS_CONFIG.map(function (g) {
+          return '<label class="opcao"><input type="checkbox" data-grupo="' + g.chave + '"' + (p.avisos[g.chave] ? ' checked' : '') + '>' +
+            '<span class="texto"><strong>' + esc(g.titulo) + '</strong><span>' + esc(g.texto) + '</span></span></label>';
+        }).join('') +
+        (p.souGestor
+          ? '<h3 class="secao-config">Equipe (gestor)</h3>' +
+            '<p class="nota">Liga ou desliga o aviso de plantão para todas as pessoas de uma vez. Cada uma pode mudar o seu depois.</p>' +
+            '<div class="acoes" style="justify-content:flex-start;margin-top:8px">' +
+              '<button type="button" class="botao neutro pequeno" data-todos="1">Ativar plantão para todos</button>' +
+              '<button type="button" class="botao neutro pequeno" data-todos="0">Desativar para todos</button>' +
+            '</div>'
+          : '') +
         '<div class="acoes"><button type="button" class="botao neutro" id="prefCancelar">Cancelar</button>' +
         '<button type="button" class="botao" id="prefSalvar">Salvar</button></div>';
+
       m.querySelector('#prefCancelar').addEventListener('click', fecharModal);
       m.querySelector('#prefSalvar').addEventListener('click', function () {
         var botao = m.querySelector('#prefSalvar');
         botao.disabled = true;
+        var avisos = {};
+        m.querySelectorAll('[data-grupo]').forEach(function (c) { avisos[c.dataset.grupo] = c.checked; });
         api('salvarMinhasPreferencias', {
           emails: m.querySelector('#prefEmails').checked,
-          agenda: m.querySelector('#prefAgenda').checked
-        }).then(function () { fecharModal(); toast('Preferências salvas.'); })
+          agenda: m.querySelector('#prefAgenda').checked,
+          avisos: avisos
+        }).then(function () { fecharModal(); toast('Configurações salvas.'); limparRespostasGuardadas(); recarregarTela(); })
           .catch(function (e) { botao.disabled = false; mostrarErro(e); });
+      });
+      m.querySelectorAll('[data-todos]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var ligar = b.dataset.todos === '1';
+          m.querySelectorAll('[data-todos]').forEach(function (x) { x.disabled = true; });
+          api('definirAvisoPlantaoParaTodos', ligar).then(function (r) {
+            toast('Aviso de plantão ' + (ligar ? 'ativado' : 'desativado') + ' para ' + r.pessoas + ' pessoas.');
+            var meu = m.querySelector('[data-grupo="plantao"]');
+            if (meu) meu.checked = ligar;
+            m.querySelectorAll('[data-todos]').forEach(function (x) { x.disabled = false; });
+            limparRespostasGuardadas();
+          }).catch(function (e) { m.querySelectorAll('[data-todos]').forEach(function (x) { x.disabled = false; }); mostrarErro(e); });
+        });
       });
     }).catch(function (e) { fecharModal(); mostrarErro(e); });
   });
 
-  // ---------- Contador de avisos no menu (próximas 4 semanas) ----------
-  window.atualizarContadorAvisos = function () {
-    api('contarAvisosAbertos').then(function (n) {
-      var c = document.getElementById('contadorAvisos');
-      c.textContent = n;
-      c.classList.toggle('oculto', !n);
-    }).catch(function () { /* contador é só informativo */ });
-  };
-
   window.addEventListener('DOMContentLoaded', function () {
     irPara(window.TELA_INICIAL);
-    atualizarContadorAvisos();
   });
 })();
 </script>

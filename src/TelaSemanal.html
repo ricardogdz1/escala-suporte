@@ -1,0 +1,439 @@
+<style>
+  .lista-semanas { display: flex; flex-direction: column; gap: 14px; }
+  .cartao-semana .topo-semana { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .cartao-semana .topo-semana h2 { font-size: 20px; }
+  .cartao-semana .topo-semana .botao { margin-left: auto; }
+  .cartao-semana.passada { opacity: 0.75; }
+  .cartao-semana.atual { border-color: var(--verde); }
+  .cartao-semana .dia { display: grid; grid-template-columns: 82px 74px minmax(0, 1fr) auto; gap: 8px 14px; align-items: center; padding: 10px 8px; border-top: 1px solid var(--borda); border-radius: 8px; }
+  .cartao-semana .topo-semana + .dia { border-top: 0; }
+  .cartao-semana .dia.hoje { background: var(--cinza-claro); }
+  .cartao-semana .dia.minha { background: var(--verde-claro); }
+  .cartao-semana .dia.pendente { outline: 1.5px dashed var(--verde); outline-offset: -1.5px; }
+  .cartao-semana .dia.passado { opacity: 0.7; }
+  .cartao-semana .dia .rotulo { font-weight: 600; }
+  .cartao-semana .dia .rotulo small { display: block; font-weight: 400; color: var(--texto-suave); font-size: 12px; }
+  .cartao-semana .dia .horario { color: var(--texto-suave); font-size: 14px; }
+  .cartao-semana .dia.nao-aplica .etiquetas { color: var(--texto-suave); font-style: italic; }
+  .cartao-semana .etiqueta button {
+    background: none; border: 0; color: inherit; padding: 0 0 0 2px; font-size: 14px; line-height: 1; cursor: pointer; opacity: 0.7;
+    min-width: 24px; min-height: 24px;
+  }
+  .cartao-semana .etiqueta button:hover { opacity: 1; }
+  .cartao-semana .etiqueta.riscado { text-decoration: line-through; opacity: 0.55; }
+  .cartao-semana .etiqueta.pendente { background: none; border: 1.5px dashed var(--verde); color: var(--verde); padding: 3.5px 10.5px; }
+  .cartao-semana .adicionar {
+    display: inline-flex; align-items: center; min-height: 32px; padding: 3px 12px; border-radius: 999px;
+    border: 1px dashed var(--borda); background: transparent; color: var(--verde); font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .cartao-semana .adicionar:hover { background: var(--verde-claro); border-color: var(--verde); }
+  .cartao-semana select.adicionar { padding-right: 8px; max-width: 160px; }
+  @media (max-width: 700px) {
+    .cartao-semana .dia { grid-template-columns: 82px minmax(0, 1fr); }
+    .cartao-semana .dia .horario { display: none; }
+    .cartao-semana .dia .lado { grid-column: 1 / -1; }
+  }
+  .cartao-mais-semanas {
+    display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; padding: 12px 20px;
+    text-align: left; font: inherit; color: var(--texto); cursor: pointer; background: var(--cinza-claro); border-style: dashed;
+  }
+  .cartao-mais-semanas:hover { background: var(--cinza-medio); }
+  .cartao-mais-semanas:disabled { cursor: default; opacity: 0.7; }
+  .cartao-mais-semanas .seta { color: var(--verde); font-size: 14px; }
+  .cartao-mais-semanas .texto { display: flex; flex-direction: column; gap: 2px; }
+  .lateral-semanal { position: sticky; top: 16px; align-self: start; display: flex; flex-direction: column; gap: 14px; }
+  .lateral-semanal .cartao + .cartao { margin-top: 0; }
+  .painel-mudancas-semanal .subtitulo { color: var(--texto-suave); margin: -6px 0 14px; }
+  .painel-mudancas-semanal ul { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 0 0 4px; padding: 0; }
+  .painel-mudancas-semanal li { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .painel-mudancas-semanal li .sinal { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; flex: 0 0 auto; }
+  .painel-mudancas-semanal li .sinal.mais { background: var(--verde-claro); color: var(--verde); }
+  .painel-mudancas-semanal li .sinal.menos { background: var(--ambar-claro); color: var(--ambar); }
+  .barras { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .barras .linha { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; font-size: 14px; align-items: center; }
+  .barras .linha .nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barras .linha .barra { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--cinza-medio); overflow: hidden; }
+  .barras .linha .barra > span { display: block; height: 100%; background: var(--verde); border-radius: 3px; }
+  .barras .linha.minha .nome { font-weight: 700; }
+</style>
+<script>
+/**
+ * Telas Meio-dia e Plantão: um cartão por semana, com quem está em cada dia.
+ * Mesmo padrão de Sábados: o usuário marca várias mudanças e salva tudo de uma vez pelo painel lateral.
+ * Janela: semana atual + 8; cartões "Semanas anteriores" / "Próximas semanas" carregam mais 9 por clique.
+ */
+(function () {
+  function criarTelaSemanal(cfg) {
+    var estado = {
+      janelas: [],   // segundas-feiras dos blocos carregados, em ordem
+      dados: {},     // segunda -> resposta de obterX
+      alvo: '',      // "yyyy-MM-dd" para rolar até um dia (vindo de um aviso do painel)
+      escalar: {},   // chave data|email -> {data, email, nome}
+      cancelar: {}   // id -> {data, nome}
+    };
+
+    /** Segunda-feira da semana de uma data "yyyy-MM-dd". */
+    function segundaDe(iso) {
+      var d = dataDe(iso);
+      var recuo = d.getDay() === 0 ? 6 : d.getDay() - 1;
+      d.setDate(d.getDate() - recuo);
+      return isoDe(d);
+    }
+    function maisDias(iso, n) { var d = dataDe(iso); d.setDate(d.getDate() + n); return isoDe(d); }
+    function diaMes(iso) { return iso.substring(8, 10) + '/' + iso.substring(5, 7); }
+    function rotuloJanela(seg) { return diaMes(seg) + ' a ' + diaMes(maisDias(seg, 9 * 7 - 2)); }
+    function chaveEscalar(e) { return e.data + '|' + e.email; }
+
+    TELAS[cfg.nome] = {
+      titulo: cfg.titulo,
+      descricao: cfg.descricao,
+      carregar: function (corpo, acoes) {
+        var p = TELAS[cfg.nome].parametros;
+        var atual = segundaDe(hojeIso());
+        estado.janelas = [atual];
+        estado.alvo = (p && p.data) || '';
+        if (estado.alvo) {
+          var segAlvo = segundaDe(estado.alvo);
+          while (segAlvo < estado.janelas[0]) estado.janelas.unshift(maisDias(estado.janelas[0], -63));
+          while (segAlvo > maisDias(estado.janelas[estado.janelas.length - 1], 56)) estado.janelas.push(maisDias(estado.janelas[estado.janelas.length - 1], 63));
+        }
+        return carregar(corpo, acoes);
+      }
+    };
+
+    var pedido = 0;
+    var ultimoDesenhado = null;
+
+    function carregar(corpo, acoes) {
+      var meuPedido = ++pedido;
+      var desenhou = false;
+      var tentarDesenhar = function () {
+        if (meuPedido !== pedido || !corpo.isConnected) return;
+        if (!estado.janelas.every(function (j) { return estado.dados[j]; })) return;
+        var d = mesclar();
+        var texto = JSON.stringify(d);
+        if (desenhou && texto === ultimoDesenhado) return;
+        desenhou = true;
+        ultimoDesenhado = texto;
+        desenhar(corpo, acoes, d);
+      };
+      var promessas = estado.janelas.map(function (j) {
+        return apiGuardada(cfg.funcaoObter, [j], function (d) { estado.dados[j] = d; tentarDesenhar(); });
+      });
+      if (!desenhou) corpo.innerHTML = '<div class="carregando">Carregando…</div>';
+      return Promise.all(promessas).catch(function (erro) {
+        if (meuPedido === pedido && !desenhou) corpo.innerHTML = '';
+        mostrarErro(erro);
+      });
+    }
+
+    function mesclar() {
+      var primeira = estado.dados[estado.janelas[0]];
+      var semanas = [];
+      estado.janelas.forEach(function (j) { semanas = semanas.concat(estado.dados[j].semanas); });
+      return {
+        semanas: semanas,
+        semanaAtual: primeira.semanaAtual,
+        janelaAnterior: estado.dados[estado.janelas[0]].anterior,
+        janelaSeguinte: estado.dados[estado.janelas[estado.janelas.length - 1]].proximo,
+        resumoMes: primeira.resumoMes,
+        souGestor: primeira.souGestor,
+        pessoas: primeira.pessoas
+      };
+    }
+
+    function desenhar(corpo, acoes, d) {
+      atualizarCabecalho();
+      acoes.innerHTML = '';
+      corpo.innerHTML = '';
+
+      var grade = el('<div class="com-lateral"></div>');
+      var lista = el('<div class="lista-semanas"></div>');
+
+      var lateral = el('<div class="lateral-semanal"></div>');
+      var irHoje = el('<button type="button" class="botao neutro largo">Ir para a semana atual</button>');
+      irHoje.addEventListener('click', function () {
+        var alvo = corpo.querySelector('[data-semana="' + d.semanaAtual + '"]');
+        if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      lateral.appendChild(irHoje);
+      var painel = el('<div class="cartao painel-mudancas-semanal oculto"></div>');
+      lateral.appendChild(painel);
+      lateral.appendChild(resumoMes(d));
+      if (cfg.lateralExtra) lateral.appendChild(cfg.lateralExtra());
+
+      var ctx = { d: d, corpo: corpo, acoes: acoes, painel: painel, lista: lista };
+
+      lista.appendChild(cartaoMaisSemanas('anteriores', d.janelaAnterior, ctx));
+      d.semanas.forEach(function (sem) { lista.appendChild(cartaoSemana(sem, ctx)); });
+      lista.appendChild(cartaoMaisSemanas('seguintes', d.janelaSeguinte, ctx));
+
+      grade.appendChild(lista);
+      grade.appendChild(lateral);
+      corpo.appendChild(grade);
+      desenharPainel(ctx);
+
+      if (estado.alvo) {
+        var alvo = corpo.querySelector('[data-data="' + estado.alvo + '"]');
+        estado.alvo = '';
+        if (alvo) setTimeout(function () { alvo.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50);
+      }
+    }
+
+    function cartaoMaisSemanas(qual, janela, ctx) {
+      var anteriores = qual === 'anteriores';
+      var c = el('<button type="button" class="cartao cartao-mais-semanas">' +
+        '<span class="seta" aria-hidden="true">' + (anteriores ? '▲' : '▼') + '</span>' +
+        '<span class="texto"><strong>' + (anteriores ? 'Semanas anteriores' : 'Próximas semanas') + '</strong>' +
+        '<span class="nota">Ver ' + esc(rotuloJanela(janela)) + '</span></span></button>');
+      c.addEventListener('click', function () {
+        c.disabled = true;
+        c.querySelector('.nota').textContent = 'Carregando…';
+        if (anteriores) estado.janelas.unshift(janela); else estado.janelas.push(janela);
+        carregar(ctx.corpo, ctx.acoes);
+      });
+      return c;
+    }
+
+    // ---------- Mudanças pendentes ----------
+
+    function alternarEscalar(dia, email, nome, ctx) {
+      var e = { data: dia.data, email: email, nome: nome };
+      var chave = chaveEscalar(e);
+      if (estado.escalar[chave]) delete estado.escalar[chave];
+      else estado.escalar[chave] = e;
+      redesenharDia(dia, ctx);
+    }
+
+    function alternarCancelar(p, dia, ctx) {
+      if (estado.cancelar[p.id]) delete estado.cancelar[p.id];
+      else estado.cancelar[p.id] = { data: dia.data, nome: p.minha ? 'Você' : p.nome };
+      redesenharDia(dia, ctx);
+    }
+
+    function redesenharDia(dia, ctx) {
+      var atual = ctx.lista.querySelector('[data-data="' + dia.data + '"]');
+      if (atual) atual.replaceWith(linhaDia(dia, ctx));
+      desenharPainel(ctx);
+    }
+
+    function pendentesDoDia(dia) {
+      return Object.keys(estado.escalar).map(function (k) { return estado.escalar[k]; })
+        .filter(function (e) { return e.data === dia.data; });
+    }
+    function temPendencia(dia) {
+      var k;
+      for (k in estado.escalar) if (estado.escalar[k].data === dia.data) return true;
+      for (k in estado.cancelar) if (estado.cancelar[k].data === dia.data) return true;
+      return false;
+    }
+
+    /** "Copiar semana anterior": marca como pendentes as pessoas da semana passada (gestor: todas; colaborador: só ele). */
+    function copiarSemanaAnterior(sem, ctx) {
+      var marcados = 0;
+      sem.dias.forEach(function (dia) {
+        if (!dia.aplica) return;
+        dia.semanaPassada.forEach(function (p) {
+          if (!ctx.d.souGestor && p.email !== USUARIO.email) return;
+          var jaEsta = dia.pessoas.some(function (x) { return x.email === p.email && !estado.cancelar[x.id]; });
+          var e = { data: dia.data, email: p.email, nome: p.nome };
+          if (jaEsta || estado.escalar[chaveEscalar(e)]) return;
+          estado.escalar[chaveEscalar(e)] = e;
+          marcados++;
+        });
+      });
+      if (!marcados) { toast('Nada para copiar: a semana anterior não tem escalas diferentes desta.'); return; }
+      toast(marcados + (marcados === 1 ? ' escala marcada' : ' escalas marcadas') + '. Confira e confirme no painel Mudanças.');
+      sem.dias.forEach(function (dia) { redesenharDia(dia, ctx); });
+    }
+
+    function desenharPainel(ctx) {
+      var painel = ctx.painel;
+      var itens = [];
+      Object.keys(estado.escalar).forEach(function (k) { var e = estado.escalar[k]; itens.push({ sinal: 'mais', data: e.data, nome: e.email === USUARIO.email ? 'Você' : e.nome }); });
+      Object.keys(estado.cancelar).forEach(function (k) { var c = estado.cancelar[k]; itens.push({ sinal: 'menos', data: c.data, nome: c.nome }); });
+      if (!itens.length) { painel.classList.add('oculto'); painel.innerHTML = ''; return; }
+      itens.sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : a.sinal === 'menos' ? -1 : 1; });
+
+      var nEsc = Object.keys(estado.escalar).length, nCan = Object.keys(estado.cancelar).length;
+      var resumo = [];
+      if (nEsc) resumo.push(nEsc + (nEsc === 1 ? ' escala para salvar' : ' escalas para salvar'));
+      if (nCan) resumo.push(nCan + ' para tirar');
+
+      painel.classList.remove('oculto');
+      painel.innerHTML =
+        '<h2>Mudanças</h2><p class="subtitulo">' + esc(resumo.join(' · ')) + '</p>' +
+        '<ul>' + itens.map(function (i) {
+          var d = dataDe(i.data);
+          return '<li><span class="sinal ' + i.sinal + '">' + (i.sinal === 'mais' ? '+' : '−') + '</span>' +
+            '<span>' + esc(DIAS_NOME[d.getDay()].split('-')[0] + ' ' + diaMes(i.data)) + ' · ' + esc(i.nome) + '</span></li>';
+        }).join('') + '</ul>' +
+        '<p class="nota">Nada é gravado até você confirmar.</p>' +
+        '<div class="acoes"><button type="button" class="botao neutro" data-acao="limpar">Limpar</button>' +
+        '<button type="button" class="botao escuro" data-acao="salvar">Confirmar (' + itens.length + ')</button></div>';
+
+      painel.querySelector('[data-acao="limpar"]').addEventListener('click', function () {
+        estado.escalar = {}; estado.cancelar = {};
+        desenhar(ctx.corpo, ctx.acoes, ctx.d);
+      });
+      painel.querySelector('[data-acao="salvar"]').addEventListener('click', function () { salvar(ctx); });
+    }
+
+    function salvar(ctx) {
+      var painel = ctx.painel;
+      var dados = {
+        escalar: Object.keys(estado.escalar).map(function (k) {
+          var e = estado.escalar[k];
+          var item = { data: e.data };
+          if (e.email !== USUARIO.email) item.email = e.email;
+          return item;
+        }),
+        cancelar: Object.keys(estado.cancelar)
+      };
+      painel.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+      chamarComConfirmacao(cfg.funcaoSalvar, dados, {
+        painel: painel, textoBotao: 'Salvar mesmo assim', titulo: 'Confirmar escalas',
+        subtitulo: 'Os avisos abaixo valem para as mudanças que você marcou.'
+      }).then(function (r) {
+        if (!r) { desenharPainel(ctx); return; }
+        estado.escalar = {}; estado.cancelar = {};
+        var partes = [];
+        if (r.escalados) partes.push(r.escalados === 1 ? '1 escala salva' : r.escalados + ' escalas salvas');
+        if (r.cancelados) partes.push(r.cancelados === 1 ? '1 retirada' : r.cancelados + ' retiradas');
+        toast(partes.join(' e ') + (r.avisosIgnorados ? ' (com aviso registrado)' : '') + '.');
+        carregar(ctx.corpo, ctx.acoes);
+      }).catch(function (e) { desenharPainel(ctx); mostrarErro(e); });
+    }
+
+    // ---------- Cartões ----------
+
+    function etiquetaPessoa(p, dia, ctx) {
+      var podeTirar = p.minha || ctx.d.souGestor;
+      var riscado = !!estado.cancelar[p.id];
+      var podeTrocar = p.minha && !riscado && !p.trocaPendente && !dia.passado;
+      var e = el('<span class="etiqueta ' + (p.minha ? 'cheia' : 'cinza') + (riscado ? ' riscado' : '') + '">' + esc(p.minha ? 'Você' : p.nome) +
+        (p.trocaPendente ? '<span title="Troca pendente" aria-label="troca pendente"> ⇄</span>' : '') +
+        (podeTrocar ? '<button type="button" data-acao="trocar" aria-label="Propor troca deste dia" title="Propor troca">⇄</button>' : '') +
+        (podeTirar ? '<button type="button" data-acao="tirar" aria-label="' + (riscado ? 'Desfazer' : 'Tirar ' + esc(p.nome) + ' da escala') + '" title="' + (riscado ? 'Desfazer' : 'Tirar da escala') + '">' + (riscado ? '↶' : '✕') + '</button>' : '') + '</span>');
+      if (podeTrocar) e.querySelector('[data-acao="trocar"]').addEventListener('click', function () { abrirPropostaTroca(p.id, function () { carregar(ctx.corpo, ctx.acoes); }); });
+      if (podeTirar) e.querySelector('[data-acao="tirar"]').addEventListener('click', function () { alternarCancelar(p, dia, ctx); });
+      return e;
+    }
+
+    function etiquetaPendente(e, dia, ctx) {
+      var t = el('<span class="etiqueta pendente">' + esc(e.email === USUARIO.email ? 'Você' : e.nome) +
+        '<button type="button" aria-label="Desfazer" title="Desfazer">✕</button></span>');
+      t.querySelector('button').addEventListener('click', function () { alternarEscalar(dia, e.email, e.nome, ctx); });
+      return t;
+    }
+
+    function controleAdicionar(dia, ctx) {
+      var pendentes = pendentesDoDia(dia);
+      var jaNoDia = function (email) {
+        return dia.pessoas.some(function (p) { return p.email === email && !estado.cancelar[p.id]; }) ||
+          pendentes.some(function (e) { return e.email === email; });
+      };
+      if (!ctx.d.souGestor) {
+        if (jaNoDia(USUARIO.email)) return null;
+        var b = el('<button type="button" class="adicionar">+ Me escalar</button>');
+        b.addEventListener('click', function () { alternarEscalar(dia, USUARIO.email, USUARIO.nomeExibicao, ctx); });
+        return b;
+      }
+      var opcoes = ctx.d.pessoas.filter(function (p) { return !jaNoDia(p.email); });
+      if (!opcoes.length) return null;
+      var sel = el('<select class="adicionar" aria-label="Escalar pessoa em ' + esc(dia.rotulo) + '"><option value="">+ Escalar…</option>' +
+        opcoes.map(function (p) { return '<option value="' + esc(p.email) + '">' + esc(p.email === USUARIO.email ? 'Eu (' + p.nome + ')' : p.nome) + '</option>'; }).join('') +
+        '</select>');
+      sel.addEventListener('change', function () {
+        var p = opcoes.filter(function (x) { return x.email === sel.value; })[0];
+        if (p) alternarEscalar(dia, p.email, p.nome, ctx);
+      });
+      return sel;
+    }
+
+    function linhaDia(dia, ctx) {
+      var classes = ['dia'];
+      if (dia.hoje) classes.push('hoje');
+      if (dia.passado) classes.push('passado');
+      if (dia.minha) classes.push('minha');
+      if (temPendencia(dia)) classes.push('pendente');
+      if (!dia.aplica) classes.push('nao-aplica');
+      var rotulo = dia.rotulo.split(' ');
+      var l = el('<div class="' + classes.join(' ') + '" data-data="' + esc(dia.data) + '">' +
+        '<div class="rotulo">' + esc(rotulo[0]) + '<small>' + esc(rotulo[1]) + '</small></div>' +
+        '<div class="horario">' + esc(dia.aplica ? dia.horario : '') + '</div>' +
+        '<div class="etiquetas"></div>' +
+        '<div class="lado"></div></div>');
+      var cont = l.querySelector('.etiquetas');
+      if (!dia.aplica) {
+        cont.textContent = dia.feriado ? 'Feriado' + (dia.bloqueios.length ? ' · ' + dia.bloqueios.join('; ') : '') : 'Não se aplica';
+        dia.pessoas.forEach(function (p) { cont.appendChild(etiquetaPessoa(p, dia, ctx)); });
+        return l;
+      }
+      dia.pessoas.forEach(function (p) { cont.appendChild(etiquetaPessoa(p, dia, ctx)); });
+      pendentesDoDia(dia).forEach(function (e) { cont.appendChild(etiquetaPendente(e, dia, ctx)); });
+      var add = controleAdicionar(dia, ctx);
+      if (add) cont.appendChild(add);
+      if (!cont.children.length) cont.innerHTML = '<span class="vazio">Ninguém ainda</span>';
+      var lado = l.querySelector('.lado');
+      if (dia.bloqueios.length) lado.appendChild(el('<span class="etiqueta suave" title="' + esc(dia.bloqueios.join('; ')) + '">' + esc(dia.bloqueios[0]) + '</span>'));
+      if (dia.problema) lado.appendChild(el('<span class="etiqueta ambar pilula">' + esc(dia.problema) + '</span>'));
+      return l;
+    }
+
+    function cartaoSemana(sem, ctx) {
+      var classes = ['cartao', 'cartao-semana'];
+      if (sem.atual) classes.push('atual');
+      if (sem.passada) classes.push('passada');
+      var c = el('<div class="' + classes.join(' ') + '" data-semana="' + esc(sem.inicio) + '"></div>');
+      var topo = el('<div class="topo-semana"><h2>' + esc(sem.titulo) + '</h2>' +
+        (sem.atual ? '<span class="etiqueta suave">Esta semana</span>' : '') + '</div>');
+      var temAnterior = sem.dias.some(function (dia) { return dia.aplica && dia.semanaPassada.length; });
+      if (temAnterior && !sem.passada) {
+        var b = el('<button type="button" class="botao neutro pequeno">Copiar semana anterior</button>');
+        b.addEventListener('click', function () { copiarSemanaAnterior(sem, ctx); });
+        topo.appendChild(b);
+      }
+      c.appendChild(topo);
+      sem.dias.forEach(function (dia) { c.appendChild(linhaDia(dia, ctx)); });
+      return c;
+    }
+
+    function resumoMes(d) {
+      var r = d.resumoMes;
+      var c = el('<div class="cartao"><h3>' + esc(cfg.tituloResumo(r.mes)) + '</h3>' +
+        '<div class="numero-grande">' + r.meus + '</div>' +
+        '<p class="nota" style="margin-top:6px">' + (r.meus === 1 ? 'seu' : 'seus') + ' em ' + esc(r.mes) + ' · ' + r.diasPossiveis + ' dias possíveis</p>' +
+        (r.porPessoa.length ? '<div class="barras"></div>' : '<p class="vazio" style="margin-top:10px">Ninguém escalado ainda neste mês.</p>') +
+        '</div>');
+      var barras = c.querySelector('.barras');
+      if (barras) {
+        r.porPessoa.forEach(function (p) {
+          var pct = r.diasPossiveis ? Math.min(100, Math.round(100 * p.total / r.diasPossiveis)) : 0;
+          barras.appendChild(el('<div class="linha' + (p.minha ? ' minha' : '') + '" title="' + p.total + ' de ' + r.diasPossiveis + ' dias possíveis"><span class="nome">' + esc(p.nome) + '</span><span>' + p.total + '</span>' +
+            '<span class="barra"><span style="width:' + pct + '%"></span></span></div>'));
+        });
+      }
+      return c;
+    }
+  }
+
+  criarTelaSemanal({
+    nome: 'meiodia',
+    titulo: 'Meio-dia',
+    descricao: 'Quem fica no meio-dia trabalha até 12:30 e sai às 17:30. Duas pessoas por dia, de segunda a sexta, organizado na daily de segunda.',
+    funcaoObter: 'obterMeioDia',
+    funcaoSalvar: 'salvarMeioDia',
+    tituloResumo: function (mes) { return 'Meio-dias em ' + mes; }
+  });
+
+  criarTelaSemanal({
+    nome: 'plantao',
+    titulo: 'Plantão',
+    descricao: 'Uma pessoa por dia: de segunda a sexta das 18h às 20h e aos sábados das 13h às 17h.',
+    funcaoObter: 'obterPlantao',
+    funcaoSalvar: 'salvarPlantao',
+    tituloResumo: function (mes) { return 'Plantões em ' + mes; }
+  });
+})();
+</script>

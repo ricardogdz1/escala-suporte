@@ -3,31 +3,60 @@
   .cartao-dia .topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
   .cartao-dia .topo h3 { font-family: var(--fonte-texto); font-size: 16px; font-weight: 700; }
   .cartao-dia .topo .quando { color: var(--texto-suave); font-size: 14px; white-space: nowrap; }
-  .painel-lateral .topo-avisos { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .cartao-trocas h2 { margin-bottom: 10px; }
+  .cartao-trocas h3 { font-family: var(--fonte-texto); font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--texto-suave); margin: 12px 0 8px; }
+  .cartao-trocas .troca { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 12px 14px; border: 1px solid var(--borda); border-radius: 10px; background: var(--cinza-claro); }
+  .cartao-trocas .troca + .troca { margin-top: 8px; }
+  .cartao-trocas .troca .texto { flex: 1 1 260px; line-height: 1.45; }
+  .cartao-trocas .troca .texto small { display: block; color: var(--texto-suave); font-size: 13px; }
+  .cartao-trocas .troca .acoes-troca { display: flex; gap: 8px; }
+  .cartao-trocas .troca.pendente { background: var(--ambar-claro); border-color: var(--ambar-borda); }
+  .painel-lateral .topo-avisos { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .painel-lateral .periodo-avisos { color: var(--texto-suave); font-size: 14px; margin-bottom: 14px; }
+  .painel-lateral .grupos-avisos { display: flex; flex-direction: column; gap: 10px; }
+  .grupo-aviso { border: 1px solid var(--borda); border-radius: 10px; background: var(--cinza-claro); }
+  .grupo-aviso.com-avisos { background: var(--ambar-claro); border-color: var(--ambar-borda); }
+  .grupo-aviso > button {
+    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 10px 14px;
+    background: none; border: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; border-radius: 10px;
+  }
+  .grupo-aviso > button:disabled { cursor: default; }
+  .grupo-aviso.com-avisos > button { color: var(--ambar); }
+  .grupo-aviso.com-avisos > button::before { content: "⚠"; font-size: 17px; line-height: 1.2; flex: 0 0 auto; }
+  .grupo-aviso .texto { flex: 1 1 auto; min-width: 0; line-height: 1.35; }
+  .grupo-aviso .texto strong { display: block; font-weight: 700; }
+  .grupo-aviso .texto .explicacao { display: block; font-size: 14px; }
+  .grupo-aviso .texto .explicacao.vazio { font-style: italic; }
+  .grupo-aviso .seta { flex: 0 0 auto; transition: transform 0.15s; font-size: 14px; }
+  .grupo-aviso.aberto .seta { transform: rotate(180deg); }
+  .grupo-aviso .detalhe { display: none; padding: 0 12px 12px; }
+  .grupo-aviso.aberto .detalhe { display: block; }
+  .grupo-aviso .detalhe .lista-avisos { gap: 8px; }
+  .grupo-aviso .detalhe .aviso { background: var(--cartao); }
   .painel-lateral .lista-avisos .aviso { cursor: pointer; }
   .painel-lateral .lista-avisos .aviso:hover { background: #F7E4C3; }
-  .painel-lateral .rodape { margin-top: auto; padding-top: 18px; }
-  .painel-lateral.cartao { display: flex; flex-direction: column; min-height: 100%; }
+  .painel-lateral .rodape { padding-top: 18px; }
+  .painel-lateral.cartao { display: flex; flex-direction: column; align-self: start; } /* altura = conteúdo, não a da coluna ao lado */
   .barra-periodo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .barra-periodo h2 { font-size: 22px; }
   .tabela .nomes { line-height: 1.5; }
 </style>
 <script>
 /**
- * Tela Painel – "quem está onde".
- * Hoje = 4 cartões do dia + tabela da semana; Semana/Mês = tabela do período. Coluna "Avisos abertos".
+ * Tela Painel – quem está onde.
+ * Semana = cartões de hoje + esta semana + próxima semana; Mês = este mês + próximo. Coluna "Avisos abertos".
  */
 (function () {
-  var estado = { modo: 'hoje', data: '' };
+  var estado = { modo: 'semana' };
 
   TELAS.painel = {
-    titulo: 'Quem está onde',
+    titulo: '',
     sobrelinha: '',
     carregar: function (corpo, acoes) {
       acoes.innerHTML =
         '<div class="alternador" role="group" aria-label="Período">' +
-          ['hoje', 'semana', 'mes'].map(function (m) {
-            var rotulo = { hoje: 'Hoje', semana: 'Semana', mes: 'Mês' }[m];
+          ['semana', 'mes'].map(function (m) {
+            var rotulo = { semana: 'Semana', mes: 'Mês' }[m];
             return '<button type="button" data-modo="' + m + '" aria-pressed="' + (estado.modo === m) + '">' + rotulo + '</button>';
           }).join('') +
         '</div>';
@@ -42,39 +71,97 @@
     }
   };
 
+  var pedido = 0;            // ignora respostas de pedidos antigos (usuário mudou de período antes de chegar)
+  var ultimoDesenhado = null; // para não redesenhar quando a resposta fresca é igual à guardada
+
   function carregarPainel(corpo) {
-    corpo.innerHTML = '<div class="carregando">Carregando…</div>';
-    return api('obterPainel', estado.data, estado.modo).then(function (p) {
-      estado.data = p.referencia;
-      atualizarCabecalho({ sobrelinha: p.modo === 'hoje' ? p.referenciaExtenso : '' });
-      corpo.innerHTML = '';
-
-      if (p.modo === 'hoje') corpo.appendChild(cartoesDoDia(p.diaReferencia));
-
-      var grade = el('<div class="com-lateral"></div>');
-      var principal = el('<div class="cartao"></div>');
-      principal.appendChild(barraPeriodo(p, corpo));
-      principal.appendChild(tabela(p));
-      grade.appendChild(principal);
-      grade.appendChild(colunaAvisos(p));
-      corpo.appendChild(grade);
+    var meuPedido = ++pedido;
+    var desenhou = false;
+    var promessa = apiGuardada('obterPainel', [estado.modo], function (p, fresco) {
+      if (meuPedido !== pedido || !corpo.isConnected) return;
+      var texto = JSON.stringify(p);
+      if (fresco && desenhou && texto === ultimoDesenhado) return;
+      desenhou = true;
+      ultimoDesenhado = texto;
+      desenhar(corpo, p);
+    });
+    if (!desenhou) corpo.innerHTML = '<div class="carregando">Carregando…</div>';
+    return promessa.catch(function (erro) {
+      if (meuPedido === pedido && !desenhou) corpo.innerHTML = '';
+      mostrarErro(erro);
     });
   }
 
-  function barraPeriodo(p, corpo) {
-    var b = el(
-      '<div class="barra-periodo">' +
-        '<h2>' + esc(p.titulo) + '</h2>' +
-        '<div class="navegacao-periodo" style="margin-left:auto">' +
-          '<button type="button" class="botao neutro pequeno" data-ir="' + esc(p.anterior) + '" aria-label="Período anterior">‹</button>' +
-          '<button type="button" class="botao neutro pequeno" data-ir="' + esc(p.hoje) + '">Hoje</button>' +
-          '<button type="button" class="botao neutro pequeno" data-ir="' + esc(p.proximo) + '" aria-label="Próximo período">›</button>' +
-        '</div>' +
-      '</div>');
-    b.querySelectorAll('[data-ir]').forEach(function (btn) {
-      btn.addEventListener('click', function () { estado.data = btn.dataset.ir; carregarPainel(corpo); });
+  function desenhar(corpo, p) {
+    atualizarCabecalho({ sobrelinha: p.hojeExtenso });
+    corpo.innerHTML = '';
+
+    if (p.trocas && (p.trocas.recebidas.length || p.trocas.enviadas.length)) corpo.appendChild(cartaoTrocas(p.trocas, corpo));
+    if (p.modo === 'semana') corpo.appendChild(cartoesDoDia(p.diaHoje));
+
+    var grade = el('<div class="com-lateral"></div>');
+    var principal = el('<div></div>');
+    p.periodos.forEach(function (periodo) {
+      var cartao = el('<div class="cartao"></div>');
+      cartao.appendChild(el(
+        '<div class="barra-periodo">' +
+          '<h2>' + esc(periodo.titulo) + '</h2>' +
+          '<span class="etiqueta suave">' + esc(periodo.rotulo) + '</span>' +
+        '</div>'));
+      cartao.appendChild(tabela(periodo));
+      principal.appendChild(cartao);
     });
-    return b;
+    grade.appendChild(principal);
+    grade.appendChild(colunaAvisos(p));
+    corpo.appendChild(grade);
+  }
+
+  /** Cartão "Trocas": propostas recebidas (aceitar/recusar) e enviadas (status/cancelar). */
+  function cartaoTrocas(t, corpo) {
+    var c = el('<div class="cartao cartao-trocas" style="margin-bottom:18px"><h2>Trocas</h2></div>');
+    var rotuloStatus = { pendente: 'aguardando resposta', aceita: 'aceita', recusada: 'recusada', cancelada: 'cancelada', expirada: 'expirou' };
+
+    if (t.recebidas.length) {
+      c.appendChild(el('<h3>Propostas para você</h3>'));
+      t.recebidas.forEach(function (tr) {
+        var item = el('<div class="troca pendente"><div class="texto"><strong>' + esc(tr.proponente) + '</strong> quer trocar o <strong>' + esc(tr.lancProponente) + '</strong> dele(a) pelo seu <strong>' + esc(tr.lancDestinatario) + '</strong>.' +
+          '<small>Proposta em ' + esc(tr.criadaEm) + ' · Ao aceitar, escala e agenda são atualizadas e o gestor é avisado.</small></div>' +
+          '<div class="acoes-troca"><button type="button" class="botao neutro pequeno" data-acao="recusar">Recusar</button>' +
+          '<button type="button" class="botao pequeno" data-acao="aceitar">Aceitar troca</button></div></div>');
+        var responder = function (aceitar) {
+          item.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+          chamarComConfirmacao('responderTroca', { id: tr.id, aceitar: aceitar }, {
+            textoBotao: 'Aceitar mesmo assim', titulo: 'Confirmar troca',
+            subtitulo: 'A troca causa os avisos abaixo. Se aceitar, fica registrado.'
+          }).then(function (r) {
+            if (!r) { item.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); return; }
+            toast(aceitar ? 'Troca aceita. Escala e agenda atualizadas.' : 'Troca recusada.');
+            limparRespostasGuardadas();
+            recarregarTela();
+          }).catch(function (e) { item.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); mostrarErro(e); });
+        };
+        item.querySelector('[data-acao="recusar"]').addEventListener('click', function () { responder(false); });
+        item.querySelector('[data-acao="aceitar"]').addEventListener('click', function () { responder(true); });
+        c.appendChild(item);
+      });
+    }
+
+    if (t.enviadas.length) {
+      c.appendChild(el('<h3>Suas propostas</h3>'));
+      t.enviadas.forEach(function (tr) {
+        var item = el('<div class="troca' + (tr.status === 'pendente' ? ' pendente' : '') + '"><div class="texto">Seu <strong>' + esc(tr.lancProponente) + '</strong> pelo <strong>' + esc(tr.lancDestinatario) + '</strong> de <strong>' + esc(tr.destinatario) + '</strong> · ' + esc(rotuloStatus[tr.status] || tr.status) +
+          '<small>' + esc(tr.status === 'pendente' ? 'Enviada em ' + tr.criadaEm : 'Respondida em ' + (tr.respondidaEm || '—')) + '</small></div>' +
+          (tr.status === 'pendente' ? '<div class="acoes-troca"><button type="button" class="botao neutro pequeno" data-acao="cancelar">Cancelar proposta</button></div>' : '') + '</div>');
+        var b = item.querySelector('[data-acao="cancelar"]');
+        if (b) b.addEventListener('click', function () {
+          b.disabled = true;
+          api('cancelarTroca', tr.id).then(function () { toast('Proposta cancelada.'); recarregarTela(); })
+            .catch(function (e) { b.disabled = false; mostrarErro(e); });
+        });
+        c.appendChild(item);
+      });
+    }
+    return c;
   }
 
   function etiquetas(nomes) {
@@ -98,13 +185,13 @@
         cartao('Férias', quandoFerias, nomesFerias, null) +
         cartao('Home office', 'semana toda', dia.homeOffice, null) +
         cartao('Meio-dia', 'até 12:30', dia.meioDia, dia.problemas.meioDia, !util) +
-        cartao('Plantão', 'até 20h', dia.plantao, dia.problemas.plantao, !util) +
+        cartao('Plantão', dia.plantaoHorario, dia.plantao, dia.problemas.plantao, !dia.plantaoAplica) +
       '</div>';
     return el(html);
   }
 
-  function tabela(p) {
-    var linhas = p.dias.filter(function (d) { return d.diaSemana !== 0; }).map(function (d) {
+  function tabela(periodo) {
+    var linhas = periodo.dias.filter(function (d) { return d.diaSemana !== 0; }).map(function (d) {
       var util = d.diaSemana >= 1 && d.diaSemana <= 5 && !d.feriado;
       var sabado = d.diaSemana === 6;
       function celula(nomes, problema, aplica) {
@@ -118,7 +205,7 @@
       var primeira;
       if (sabado) {
         if (!d.sabado || d.sabado.bloqueado) {
-          primeira = '<td><span class="etiqueta suave">' + esc(d.bloqueios.map(function (b) { return b.descricao || b.tipo; }).join('; ') || 'Bloqueado') + '</span></td>';
+          primeira = '<td><span class="etiqueta suave">' + esc(d.bloqueios.map(function (b) { return b.titulo; }).join('; ') || 'Bloqueado') + '</span></td>';
         } else {
           var prob = d.problemas.sabado || d.problemas.setores;
           primeira = prob
@@ -132,8 +219,8 @@
       return '<tr' + (d.hoje ? ' class="hoje"' : '') + '>' +
         '<td class="dia">' + rotuloDia + '</td>' +
         primeira +
-        (sabado ? '<td><span class="vazio">—</span></td>' : celula(d.plantao, d.problemas.plantao, util)) +
-        (sabado ? '<td><span class="vazio">—</span></td>' : celula(d.homeOffice, null, true)) +
+        celula(d.plantao, d.problemas.plantao, d.plantaoAplica) +
+        (sabado ? '<td><span class="vazio">—</span></td>' : celula(d.homeOffice, d.problemas.homeOffice, true)) +
         celula(d.ferias.map(function (f) { return f.nome; }), null, true) +
       '</tr>';
     }).join('');
@@ -143,29 +230,73 @@
       '<tbody>' + linhas + '</tbody></table></div>');
   }
 
+  /** "dd/MM" a partir de "yyyy-MM-dd". */
+  function diaMes(iso) { return iso.substring(8, 10) + '/' + iso.substring(5, 7); }
+
+  /**
+   * Um cartão por grupo (Sábados, Plantão…): fechado mostra a quantidade e o primeiro dia;
+   * clicando, abre a lista completa dos avisos do grupo (cada um leva à tela certa).
+   */
+  function cartaoGrupo(g, itens, abrir) {
+    var n = itens.length;
+    var resumo = n
+      ? n + ' aviso' + (n > 1 ? 's' : '') + ' · primeiro em ' + diaMes(itens[0].data) + (n > 1 ? ', último em ' + diaMes(itens[n - 1].data) : '')
+      : 'Nenhum aviso.';
+    var c = el(
+      '<div class="grupo-aviso' + (n ? ' com-avisos' : '') + '">' +
+        '<button type="button" aria-expanded="false"' + (n ? '' : ' disabled') + '>' +
+          '<span class="texto"><strong>' + esc(g.titulo) + (n ? ' · ' + n : '') + '</strong>' +
+          '<span class="explicacao' + (n ? '' : ' vazio') + '">' + esc(resumo) + '</span></span>' +
+          (n ? '<span class="seta" aria-hidden="true">▾</span>' : '') +
+        '</button>' +
+        '<div class="detalhe"><div class="lista-avisos"></div></div>' +
+      '</div>');
+    if (!n) return c;
+
+    var lista = c.querySelector('.lista-avisos');
+    itens.forEach(function (av) {
+      var item = el('<div class="aviso" role="button" tabindex="0"><div><strong>' + esc(av.titulo) + '</strong>' +
+        '<div class="explicacao">' + esc(av.texto) + '</div></div></div>');
+      var ir = function () { abrir(av); };
+      item.addEventListener('click', ir);
+      item.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } });
+      lista.appendChild(item);
+    });
+
+    var botao = c.querySelector('button');
+    botao.addEventListener('click', function () {
+      var aberto = c.classList.toggle('aberto');
+      botao.setAttribute('aria-expanded', String(aberto));
+    });
+    return c;
+  }
+
+  var GRUPOS_AVISOS = [
+    { chave: 'sabados', titulo: 'Sábados' },
+    { chave: 'plantao', titulo: 'Plantão' },
+    { chave: 'meiodia', titulo: 'Meio-dia' },
+    { chave: 'homeoffice', titulo: 'Home office' },
+    { chave: 'ferias', titulo: 'Férias' }
+  ];
+
   function colunaAvisos(p) {
     var a = el('<aside class="cartao painel-lateral"></aside>');
+    var abrir = function (av) { irPara(av.tela, { mes: av.data.substring(0, 7), data: av.data }); };
+
     a.innerHTML =
       '<div class="topo-avisos">' +
         '<h2>Avisos abertos</h2>' +
         (p.avisos.length ? '<span class="etiqueta ambar pilula">' + p.avisos.length + '</span>' : '') +
       '</div>' +
-      (p.avisos.length
-        ? '<div class="lista-avisos">' + p.avisos.map(function (av, i) {
-            return '<div class="aviso" role="button" tabindex="0" data-i="' + i + '"><div><strong>' + esc(av.titulo) + '</strong>' +
-              '<div class="explicacao">' + esc(av.texto) + '</div></div></div>';
-          }).join('') + '</div>'
-        : '<p class="vazio">Nenhum aviso neste período.</p>') +
+      '<p class="periodo-avisos">De hoje até ' + esc(p.avisosAte) + '</p>' +
+      '<div class="grupos-avisos"></div>' +
       '<p class="nota" style="margin-top:14px">Avisos não impedem lançamentos.</p>';
 
-    var abrir = function (av) { irPara(av.tela, { mes: av.data.substring(0, 7), data: av.data }); };
-    a.querySelectorAll('[data-i]').forEach(function (b) {
-      var av = p.avisos[Number(b.dataset.i)];
-      var ir = function () { abrir(av); };
-      b.addEventListener('click', ir);
-      b.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } });
+    var grupos = a.querySelector('.grupos-avisos');
+    GRUPOS_AVISOS.forEach(function (g) {
+      var itens = p.avisos.filter(function (av) { return av.grupo === g.chave; });
+      grupos.appendChild(cartaoGrupo(g, itens, abrir));
     });
-
     if (p.avisos.length) {
       var primeiro = p.avisos[0];
       var d = dataDe(primeiro.data);

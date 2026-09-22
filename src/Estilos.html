@@ -88,11 +88,6 @@
   }
   .menu-item:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
   .menu-item[aria-current="page"] { background: var(--menu-ativo); color: #fff; font-weight: 600; }
-  .menu-item .contador {
-    min-width: 26px; padding: 2px 8px; border-radius: 13px;
-    background: var(--amarelo); color: var(--texto);
-    font-size: 13px; font-weight: 700; text-align: center;
-  }
   .menu-rodape {
     padding: 16px 20px 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);
     font-size: 13.5px; line-height: 1.35;
@@ -164,6 +159,7 @@
   .cartao.problema { border-color: #E9C48A; }
   .cartao.bloqueado { background: var(--cinza-medio); border-color: var(--cinza-medio); }
   .grade { display: grid; gap: 14px; }
+  .grade > .cartao { margin-top: 0; } /* o espaçamento na grade é o gap, não a margem de cartões empilhados */
   .grade-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .grade-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .grade-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -258,6 +254,8 @@
     display: block; width: 100%; min-height: 46px; margin-top: 6px; padding: 8px 12px;
     border: 1.5px solid var(--borda); border-radius: 9px; font: inherit; font-weight: 400; background: #fff;
   }
+  .secao-config { margin: 16px 0 2px; font-size: 16px; }
+  .secao-config:first-of-type { margin-top: 8px; }
   .opcao { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--borda); cursor: pointer; }
   .opcao:last-of-type { border-bottom: 0; }
   .opcao input { width: 22px; height: 22px; margin: 2px 0 0; flex: 0 0 auto; accent-color: var(--verde); }

@@ -51,3 +51,9 @@ function modoTeste() {
 function limparCacheConfig() {
   CacheService.getScriptCache().remove(CACHE_CONFIG_CHAVE);
 }
+
+/** Limpa todos os caches (Config e cadastro). Usado pelo menu da planilha e pelo onEdit. */
+function limparCaches() {
+  limparCacheConfig();
+  limparCacheCadastro();
+}

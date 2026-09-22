@@ -37,6 +37,7 @@ function lancamentoDaLinha_(l) {
     atualizadoEm: l['Atualizado em'] instanceof Date ? l['Atualizado em'] : null,
     idEvento: String(l['ID evento agenda'] || ''),
     observacao: String(l['Observação'] || ''),
+    treinamento: ehSim_(l['Em treinamento']), // sábado: a pessoa está no dia mas em treinamento (não atende)
     _linha: l._linha
   };
 }
@@ -89,7 +90,8 @@ function criarLancamento_(dados, usuario) {
     'Criado em': agora,
     'Atualizado em': agora,
     'ID evento agenda': dados.idEvento || '',
-    'Observação': dados.observacao || ''
+    'Observação': dados.observacao || '',
+    'Em treinamento': dados.treinamento ? 'Sim' : 'Não'
   };
   var linha = anexarLinha_(ABA_LANCAMENTOS, obj);
   obj._linha = linha;
@@ -126,6 +128,18 @@ function listarBloqueios_(de, ate) {
       if (ate && b.inicio.getTime() > ate.getTime()) return false;
       return true;
     });
+}
+
+/**
+ * Texto de exibição de um bloqueio. TREINAMENTO aparece sempre como "TREINAMENTO" (caixa alta);
+ * os demais usam a descrição (sem a marca "(importado)") ou o tipo.
+ */
+function tituloBloqueio_(b) {
+  if (b.tipo === BLOQUEIO.TREINAMENTO) return 'TREINAMENTO';
+  var d = String(b.descricao || '').replace(/\s*\(importado\)\s*$/i, '').trim();
+  if (d) return d;
+  if (b.tipo === BLOQUEIO.FERIADO) return 'Feriado';
+  return b.tipo;
 }
 
 function bloqueiosDoDia_(bloqueios, data) {
