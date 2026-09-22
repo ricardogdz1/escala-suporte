@@ -178,30 +178,47 @@ function corrigirTurnos() {
 
 /**
  * Mede quanto cada tela custa no servidor (rodar no editor).
- * A primeira passada enche o cache das abas; a segunda mostra o ganho.
+ *
+ * No app cada tela é uma execução separada, então o que importa é a coluna
+ * "execução nova": ali a memória da execução é descartada e só o cache das abas
+ * (CacheService) sobrevive — exatamente o que acontece quando a pessoa troca de aba.
  */
 function medirDesempenho() {
-  var medir = function (nome, fn) {
+  var telas = [
+    ['obterPainel', function () { obterPainel('semana'); }],
+    ['obterSabados', function () { obterSabados(''); }],
+    ['obterMeioDia', function () { obterMeioDia(''); }],
+    ['obterPlantao', function () { obterPlantao(''); }],
+    ['obterHomeOffice', function () { obterHomeOffice(''); }],
+    ['obterFerias', function () { obterFerias(''); }]
+  ];
+  var medir = function (fn) {
     var t = new Date().getTime();
     fn();
-    return nome + ': ' + (new Date().getTime() - t) + ' ms';
+    return new Date().getTime() - t;
   };
-  var rodada = function (titulo) {
-    var linhas = [titulo];
-    linhas.push(medir('obterPainel', function () { obterPainel('semana'); }));
-    linhas.push(medir('obterSabados', function () { obterSabados(''); }));
-    linhas.push(medir('obterMeioDia', function () { obterMeioDia(''); }));
-    linhas.push(medir('obterPlantao', function () { obterPlantao(''); }));
-    linhas.push(medir('obterHomeOffice', function () { obterHomeOffice(''); }));
-    linhas.push(medir('obterFerias', function () { obterFerias(''); }));
-    return linhas.join('\n');
-  };
+
   limparCaches();
-  var frio = rodada('--- Sem cache (primeira leitura da planilha)');
-  limparCaches();
-  obterPainel('semana');              // enche o cache
-  var quente = rodada('--- Com o cache das abas quente');
-  Logger.log(frio + '\n\n' + quente);
+  var frio = {};
+  telas.forEach(function (t) {
+    limparCaches();                 // nada guardado: como a primeira pessoa do dia
+    abasLidas_ = {};
+    frio[t[0]] = medir(t[1]);
+  });
+
+  obterPainel('semana');            // enche o cache das abas
+  var novaExecucao = {};
+  telas.forEach(function (t) {
+    abasLidas_ = {};                // simula execução nova, com o cache das abas quente
+    novaExecucao[t[0]] = medir(t[1]);
+  });
+
+  var linhas = ['tela                  sem cache    execução nova'];
+  telas.forEach(function (t) {
+    var nome = t[0] + Array(22 - t[0].length).join(' ');
+    linhas.push(nome + (frio[t[0]] + ' ms').padStart(9) + (novaExecucao[t[0]] + ' ms').padStart(17));
+  });
+  Logger.log(linhas.join('\n'));
 }
 
 /** Menu na planilha para o gestor. */

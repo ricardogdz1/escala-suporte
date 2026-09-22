@@ -15,9 +15,17 @@ function obterPainel(modo) {
   modo = modo === 'mes' ? 'mes' : 'semana';
   var hoje = hoje_();
 
-  var periodos = [0, 1].map(function (n) { return montarPeriodo_(modo, hoje, n); });
-  var diaHoje = montarDia_(hoje, contextoPainel_(hoje, hoje));
-  var avisos = avisosAbertos_(u);
+  // um contexto só para tudo (períodos, cartões de hoje e avisos): montar de novo
+  // custava quatro vezes o mesmo trabalho em cada abertura do painel
+  var faixas = [0, 1].map(function (n) { return faixaDoPeriodo_(modo, hoje, n); });
+  var fimAvisos = fimDoMes_(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1));
+  var inicioTudo = faixas[0].inicio.getTime() < hoje.getTime() ? faixas[0].inicio : hoje;
+  var fimTudo = faixas[1].fim.getTime() > fimAvisos.getTime() ? faixas[1].fim : fimAvisos;
+  var c = contextoPainel_(inicioTudo, fimTudo);
+
+  var periodos = faixas.map(function (f) { return montarPeriodo_(f, c); });
+  var diaHoje = montarDia_(hoje, c);
+  var avisos = avisosAbertos_(u, c, hoje, fimAvisos);
 
   // avisos desligados nas configurações da pessoa somem do painel (lista e células da tabela)
   var ligados = preferenciasDe_(mapaPreferencias_(), u.email).avisos;
@@ -47,40 +55,55 @@ function obterPainel(modo) {
  * Um período da tabela: semana (segunda a sábado) ou mês, deslocado n períodos a partir de hoje.
  * @return {{rotulo: string, titulo: string, dias: Array}}
  */
-function montarPeriodo_(modo, hoje, n) {
-  var inicio, fim, titulo, rotulo;
+/** Começo e fim de um período (semana ou mês), deslocado n a partir de hoje. */
+function faixaDoPeriodo_(modo, hoje, n) {
   if (modo === 'mes') {
     var ref = new Date(hoje.getFullYear(), hoje.getMonth() + n, 1);
-    inicio = inicioDoMes_(ref);
-    fim = fimDoMes_(ref);
-    titulo = MESES[inicio.getMonth()] + ' de ' + inicio.getFullYear();
-    rotulo = n === 0 ? 'Este mês' : 'Próximo mês';
-  } else {
-    inicio = adicionarDias_(inicioDaSemana_(hoje), 7 * n);
-    fim = adicionarDias_(inicio, 5); // segunda a sábado
-    if (inicio.getMonth() === fim.getMonth()) {
-      titulo = 'Semana de ' + inicio.getDate() + ' a ' + fim.getDate() + ' de ' + MESES[fim.getMonth()].toLowerCase();
-    } else {
-      titulo = 'Semana de ' + inicio.getDate() + '/' + MESES[inicio.getMonth()].toLowerCase().substring(0, 3) +
-        ' a ' + fim.getDate() + '/' + MESES[fim.getMonth()].toLowerCase().substring(0, 3);
-    }
-    rotulo = n === 0 ? 'Esta semana' : 'Próxima semana';
+    var inicioMes = inicioDoMes_(ref);
+    return {
+      inicio: inicioMes, fim: fimDoMes_(ref),
+      titulo: MESES[inicioMes.getMonth()] + ' de ' + inicioMes.getFullYear(),
+      rotulo: n === 0 ? 'Este mês' : 'Próximo mês'
+    };
   }
-  var contexto = contextoPainel_(inicio, fim);
+  var inicio = adicionarDias_(inicioDaSemana_(hoje), 7 * n);
+  var fim = adicionarDias_(inicio, 5); // segunda a sábado
+  var titulo = inicio.getMonth() === fim.getMonth()
+    ? 'Semana de ' + inicio.getDate() + ' a ' + fim.getDate() + ' de ' + MESES[fim.getMonth()].toLowerCase()
+    : 'Semana de ' + inicio.getDate() + '/' + MESES[inicio.getMonth()].toLowerCase().substring(0, 3) +
+      ' a ' + fim.getDate() + '/' + MESES[fim.getMonth()].toLowerCase().substring(0, 3);
+  return { inicio: inicio, fim: fim, titulo: titulo, rotulo: n === 0 ? 'Esta semana' : 'Próxima semana' };
+}
+
+function montarPeriodo_(faixa, c) {
   return {
-    rotulo: rotulo,
-    titulo: titulo,
-    dias: diasEntre_(inicio, fim).map(function (d) { return montarDia_(d, contexto); })
+    rotulo: faixa.rotulo,
+    titulo: faixa.titulo,
+    dias: diasEntre_(faixa.inicio, faixa.fim).map(function (d) { return montarDia_(d, c); })
   };
 }
 
 /** Carrega uma vez tudo que montarDia_ precisa para o intervalo. */
 function contextoPainel_(inicio, fim) {
   var pessoas = mapaPessoas_();
+  var lancamentos = listarLancamentosValendo_(inicio, fim);
+
+  // índice dia -> lançamentos: sem ele, cada dia varria a lista inteira
+  var porDia = {};
+  lancamentos.forEach(function (x) {
+    var de = x.inicio.getTime() < inicio.getTime() ? inicio : x.inicio;
+    var ate = x.fim.getTime() > fim.getTime() ? fim : x.fim;
+    for (var d = de; d.getTime() <= ate.getTime(); d = adicionarDias_(d, 1)) {
+      var chave = formatarDataIso_(d);
+      (porDia[chave] = porDia[chave] || []).push(x);
+    }
+  });
+
   return {
+    porDia: porDia,
     pessoas: pessoas,
     setoresAtivos: listarSetoresAtivos_(),
-    lancamentos: listarLancamentosValendo_(inicio, fim),
+    lancamentos: lancamentos,
     bloqueios: listarBloqueios_(inicio, fim),
     hoje: hoje_(),
     vagasMeioDia: obterConfigNumero('VAGAS_MEIO_DIA'),
@@ -93,7 +116,8 @@ function contextoPainel_(inicio, fim) {
 }
 
 function montarDia_(data, c) {
-  var doDia = c.lancamentos.filter(function (x) { return dentroDe_(data, x.inicio, x.fim); });
+  var doDia = (c.porDia && c.porDia[formatarDataIso_(data)]) ||
+    c.lancamentos.filter(function (x) { return dentroDe_(data, x.inicio, x.fim); });
   var nomes = function (tipo, filtro) {
     return doDia
       .filter(function (x) { return x.tipo === tipo && (!filtro || filtro(x)); })
@@ -251,10 +275,10 @@ function setoresSemCobertura_(escalados, c) {
  * Cada aviso traz `grupo` (sabados, plantao, meiodia, homeoffice, ferias) para a lista agrupada do painel.
  * @return {{lista: Array, ate: string}} ate = "dd/MM" do último dia considerado
  */
-function avisosAbertos_(u) {
-  var inicio = hoje_();
-  var fim = fimDoMes_(new Date(inicio.getFullYear(), inicio.getMonth() + 1, 1));
-  var contexto = contextoPainel_(inicio, fim);
+function avisosAbertos_(u, contexto, inicio, fim) {
+  inicio = inicio || hoje_();
+  fim = fim || fimDoMes_(new Date(inicio.getFullYear(), inicio.getMonth() + 1, 1));
+  contexto = contexto || contextoPainel_(inicio, fim);
   var lista = [];
   diasEntre_(inicio, fim).forEach(function (d) {
     var dia = montarDia_(d, contexto);

@@ -244,20 +244,29 @@ function paraData_(valor) {
   return new Date(Number(partes[1]), Number(partes[2]) - 1, Number(partes[3]));
 }
 
+/**
+ * As três formatações abaixo são feitas na mão, sem Utilities.formatDate: aquilo é
+ * chamada de serviço e aqui roda milhares de vezes por tela. O runtime já usa o fuso
+ * do projeto, e todas as datas do sistema nascem locais, então o resultado é o mesmo.
+ */
+function doisDigitos_(n) { return n < 10 ? '0' + n : String(n); }
+
+function dataValida_(data) { return data instanceof Date && !isNaN(data.getTime()); }
+
 /** Date -> "yyyy-MM-dd" (formato usado entre servidor e cliente). */
 function formatarDataIso_(data) {
-  if (!(data instanceof Date) || isNaN(data.getTime())) return '';
-  return Utilities.formatDate(data, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  if (!dataValida_(data)) return '';
+  return data.getFullYear() + '-' + doisDigitos_(data.getMonth() + 1) + '-' + doisDigitos_(data.getDate());
 }
 
 /** Date -> "dd/MM/yyyy" para exibição. */
 function formatarDataBr_(data) {
-  if (!(data instanceof Date) || isNaN(data.getTime())) return '';
-  return Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+  if (!dataValida_(data)) return '';
+  return doisDigitos_(data.getDate()) + '/' + doisDigitos_(data.getMonth() + 1) + '/' + data.getFullYear();
 }
 
 /** Date -> "dd/MM/yyyy HH:mm" para exibição. */
 function formatarDataHoraBr_(data) {
-  if (!(data instanceof Date) || isNaN(data.getTime())) return '';
-  return Utilities.formatDate(data, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+  if (!dataValida_(data)) return '';
+  return formatarDataBr_(data) + ' ' + doisDigitos_(data.getHours()) + ':' + doisDigitos_(data.getMinutes());
 }
