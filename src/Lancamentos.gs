@@ -43,12 +43,23 @@ function lancamentoDaLinha_(l) {
 }
 
 /**
+ * Quem aparece nas telas: mapa e-mail -> ativo.
+ * Quem não está no cadastro conta como ativo, para um lançamento antigo não sumir sem explicação.
+ */
+function pessoasVisiveis_() {
+  var mapa = {};
+  listarPessoas_().forEach(function (p) { mapa[p.email] = p.ativo; });
+  return mapa;
+}
+
+/**
  * Lista lançamentos.
  * @param {Object} f  filtro opcional: {tipos: [], status: [], de: Date, ate: Date, email: string}
  *   de/ate: retorna lançamentos que tocam o intervalo (não precisam caber inteiros nele).
  */
 function listarLancamentos_(f) {
   f = f || {};
+  var visiveis = f.soAtivas ? pessoasVisiveis_() : null;
   return lerAba_(ABA_LANCAMENTOS)
     .map(lancamentoDaLinha_)
     .filter(function (x) {
@@ -56,6 +67,9 @@ function listarLancamentos_(f) {
       if (f.tipos && f.tipos.indexOf(x.tipo) < 0) return false;
       if (f.status && f.status.indexOf(x.status) < 0) return false;
       if (f.email && x.email !== normalizarEmail_(f.email)) return false;
+      // soAtivas: esconde quem saiu da equipe. O lançamento continua na planilha e
+      // volta a aparecer se a pessoa for reativada (decisão do usuário, 23/09/2026).
+      if (f.soAtivas && visiveis[x.email] === false) return false;
       if (f.de && x.fim.getTime() < f.de.getTime()) return false;
       if (f.ate && x.inicio.getTime() > f.ate.getTime()) return false;
       return true;
@@ -70,7 +84,7 @@ function statusValendo_(tipo) {
 
 /** Lançamentos que valem (não cancelados; férias só aprovadas/encaminhadas) num intervalo. */
 function listarLancamentosValendo_(de, ate) {
-  return listarLancamentos_({ de: de, ate: ate }).filter(function (x) {
+  return listarLancamentos_({ de: de, ate: ate, soAtivas: true }).filter(function (x) {
     return statusValendo_(x.tipo).indexOf(x.status) >= 0;
   });
 }

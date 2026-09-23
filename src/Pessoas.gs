@@ -129,7 +129,8 @@ function definirPessoaAtiva(dados, confirmado) {
     });
     if (futuros.length) {
       avisos.push(aviso_('PESSOA_COM_ESCALA', pessoa.nomeExibicao + ' tem ' + futuros.length + ' lançamento' + (futuros.length > 1 ? 's' : '') + ' a partir de hoje',
-        'Eles continuam valendo. Tire a pessoa das escalas futuras se ela não for mais cumpri-las.'));
+        'Eles somem das telas e dos avisos enquanto a pessoa estiver inativa, e voltam se você reativá-la. ' +
+        'Os dias que ela cobria podem passar a aparecer com vaga aberta.'));
     }
     if (pessoa.perfil === PERFIL.GESTOR && emailsGestores_().length <= 1) {
       avisos.push(aviso_('ULTIMO_GESTOR', 'É o único gestor ativo', 'Sem gestor ativo, ninguém aprova férias nem recebe as pendências.'));

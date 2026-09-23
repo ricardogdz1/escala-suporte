@@ -73,8 +73,8 @@ function contextoHomeOffice_() {
     pessoas: pessoas,
     lista: Object.keys(pessoas).map(function (e) { return pessoas[e]; }),
     // todas as reservas (passado e futuro): a fila depende do histórico inteiro
-    reservas: listarLancamentos_({ tipos: [TIPO.HOME_OFFICE], status: [STATUS.ATIVO] }),
-    ferias: listarLancamentos_({ tipos: [TIPO.FERIAS], status: [STATUS.APROVADA, STATUS.ENCAMINHADA] }),
+    reservas: listarLancamentos_({ tipos: [TIPO.HOME_OFFICE], status: [STATUS.ATIVO], soAtivas: true }),
+    ferias: listarLancamentos_({ tipos: [TIPO.FERIAS], status: [STATUS.APROVADA, STATUS.ENCAMINHADA], soAtivas: true }),
     bloqueios: listarBloqueios_(),
     pulos: lerAba_(ABA_FILA_HO).map(function (l) {
       return { email: normalizarEmail_(l['E-mail']), tipo: String(l['Tipo'] || '').trim(), semana: paraData_(l['Semana']), registradoEm: l['Registrado em'] instanceof Date ? l['Registrado em'] : null };

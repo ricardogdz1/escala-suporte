@@ -190,6 +190,9 @@ function listarMinhasTrocas_(u) {
     var minhaRecebida = t.destinatario === u.email;
     var minhaEnviada = t.proponente === u.email;
     if (!minhaRecebida && !minhaEnviada) return;
+    // o outro lado saiu da equipe: a proposta some junto com os lançamentos dele
+    var outro = pessoas[minhaRecebida ? t.proponente : t.destinatario];
+    if (outro && !outro.ativo) return;
     if (t.status !== TROCA_STATUS.PENDENTE && (!t.respondidaEm || t.respondidaEm.getTime() < limite.getTime())) return;
     if (minhaRecebida && t.status !== TROCA_STATUS.PENDENTE) return;
 

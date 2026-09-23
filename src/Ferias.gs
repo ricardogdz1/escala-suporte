@@ -30,7 +30,7 @@ function contextoFerias_() {
     pessoas: pessoas,
     lista: Object.keys(pessoas).map(function (e) { return pessoas[e]; }),
     saldos: saldos,
-    ferias: listarLancamentos_({ tipos: [TIPO.FERIAS] }).filter(function (x) { return x.status !== STATUS.CANCELADO; }),
+    ferias: listarLancamentos_({ tipos: [TIPO.FERIAS], soAtivas: true }).filter(function (x) { return x.status !== STATUS.CANCELADO; }),
     bloqueios: listarBloqueios_(),
     hoje: hoje_(),
     antecedencia: obterConfigNumero('ANTECEDENCIA_FERIAS_DIAS') || 35,

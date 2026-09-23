@@ -171,7 +171,7 @@ function montarDiaSemanal_(data, r, c, u) {
 function resumoMesSemanal_(tipo, u, c) {
   var hoje = c.hoje;
   var inicio = inicioDoMes_(hoje), fim = fimDoMes_(hoje);
-  var doMes = listarLancamentos_({ tipos: [tipo], status: [STATUS.ATIVO], de: inicio, ate: fim });
+  var doMes = listarLancamentos_({ tipos: [tipo], status: [STATUS.ATIVO], de: inicio, ate: fim, soAtivas: true });
   var porPessoa = {};
   doMes.forEach(function (x) { porPessoa[x.email] = (porPessoa[x.email] || 0) + 1; });
   var lista = Object.keys(porPessoa).map(function (email) {
