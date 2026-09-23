@@ -568,6 +568,7 @@
         dataEntrada: m.querySelector('#novaData').value
       }).then(function (r) {
         toast(r.nome + ' entrou no cadastro.');
+        recarregarTela();
         return api('obterPessoas').then(function (novo) { desenharPessoas(m, novo); });
       }).catch(function (e) { botao.disabled = false; mostrarErro(e); });
     });
@@ -589,6 +590,7 @@
           .then(function (r) {
             if (!r) { b.disabled = false; return; }
             toast(ativar ? 'Pessoa reativada.' : 'Pessoa inativada.');
+            recarregarTela();   // a tela atrás da janela mostra escalas: precisa refletir a mudança
             return api('obterPessoas').then(function (novo) { desenharPessoas(m, novo); });
           })
           .catch(function (e) { b.disabled = false; mostrarErro(e); });
@@ -642,6 +644,7 @@
         .then(function () {
           fechar();
           toast('Setores de ' + pessoa.nomeExibicao + ' atualizados.');
+          recarregarTela();   // cobertura de setor no sábado muda na hora
           return api('obterPessoas').then(function (novo) { desenharPessoas(m, novo); });
         })
         .catch(function (e) { botao.disabled = false; mostrarErro(e); });

@@ -60,6 +60,7 @@ function pessoasVisiveis_() {
 function listarLancamentos_(f) {
   f = f || {};
   var visiveis = f.soAtivas ? pessoasVisiveis_() : null;
+  var hoje = f.soAtivas ? hoje_() : null;
   return lerAba_(ABA_LANCAMENTOS)
     .map(lancamentoDaLinha_)
     .filter(function (x) {
@@ -67,9 +68,9 @@ function listarLancamentos_(f) {
       if (f.tipos && f.tipos.indexOf(x.tipo) < 0) return false;
       if (f.status && f.status.indexOf(x.status) < 0) return false;
       if (f.email && x.email !== normalizarEmail_(f.email)) return false;
-      // soAtivas: esconde quem saiu da equipe. O lançamento continua na planilha e
-      // volta a aparecer se a pessoa for reativada (decisão do usuário, 23/09/2026).
-      if (f.soAtivas && visiveis[x.email] === false) return false;
+      // Quem saiu da equipe some dos dias de hoje em diante (não vai cumprir a escala),
+      // mas continua no passado, que é histórico. Nada é apagado: reativar traz tudo de volta.
+      if (f.soAtivas && visiveis[x.email] === false && x.fim.getTime() >= hoje.getTime()) return false;
       if (f.de && x.fim.getTime() < f.de.getTime()) return false;
       if (f.ate && x.inicio.getTime() > f.ate.getTime()) return false;
       return true;
