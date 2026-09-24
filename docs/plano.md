@@ -58,6 +58,23 @@ Não existem dois bancos: teste e produção usam **a mesma planilha e o mesmo c
 - [ ] `MODO_TESTE = Não` — **a partir daqui a equipe recebe e-mails e eventos de verdade**
 - [ ] Divulgar o link e proteger as abas da planilha; dar acesso de editor ao gestor
 
+## Espelho da planilha oficial 🟨 (24/09/2026)
+Enquanto o gestor continuar usando a planilha "Agenda Suporte", o sistema a lê a cada 15 minutos e
+reflete as mudanças. Só leitura: nada é gravado lá. Ver `docs/decisoes.md`.
+
+- [x] `Sincronizacao.gs` — inspeção do arquivo (`inspecionarPlanilhaOficial`, `inspecionarGradesOficiais`,
+      `inspecionarMarcasOficiais`) e menu "Definir planilha oficial (link)"
+- [x] `Espelho.gs` — rodada completa: entra o que apareceu, sai o que sumiu, com trava de segurança
+- [x] `montarImportacao_()` separado de `executarImportacao_()`; as grades passaram a registrar a
+      faixa de datas que cobrem (`ctx.faixas`)
+- [x] Testado de ponta a ponta com `testarEspelho()` em 24/09/2026 (turno adulterado aqui, desfeito pelo espelho)
+- [ ] `instalarEspelho()` — instalar o gatilho de 15 minutos e acompanhar alguns dias
+- [ ] Publicar versão nova no `/exec` (o `/exec` ainda está na versão 3)
+
+Config: `ID_PLANILHA_OFICIAL` (link), `ESPELHO_ATIVO` (Sim/Não, desliga sem mexer no gatilho),
+`ESPELHO_MAX_REMOCOES` (60), `ESPELHO_IMPRESSAO` e `ESPELHO_ULTIMA_RODADA` (uso interno).
+Log técnico na aba `LogEspelho`.
+
 ### Links
 - Teste (`/dev`): sempre o código mais recente, só para quem edita o script — `AKfycbwpbaraP0mGgUvwlkX-QVvGVny53IWoGJ9wiQGobQ`
 - Produção (`/exec`): versão publicada, para a equipe — `AKfycbyN6Et8LhhLsFbmnYlQ6JIrH4wjznr6YL--sgNiXeeWAQJB1YVEIMtXvewftvcVuTg`

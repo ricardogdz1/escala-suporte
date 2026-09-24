@@ -68,3 +68,32 @@ O sistema é a fonte da verdade e envia para o Google Agenda. Mudanças feitas d
 
 ## Tirar-se de um sábado não pede confirmação de aviso
 Pedido do usuário (21/09/2026): a segunda janela ("fica abaixo do mínimo, tirar mesmo assim?") atrapalhava. O servidor continua registrando o aviso em `AvisosIgnorados`, então a regra "todo aviso ignorado fica registrado" segue valendo; só a janela deixou de existir. Entrar num sábado continua pedindo confirmação.
+
+## Espelho da planilha oficial (24/09/2026)
+O gestor decidiu continuar usando a planilha "Agenda Suporte" por algumas semanas. Em vez de
+congelar o projeto, o sistema passou a **ler** aquela planilha em ciclo e refletir o que muda lá
+(`Espelho.gs`). Decisões que valem lembrar:
+
+- **Sentido único e leitura pura.** Nenhum caminho do código escreve na planilha oficial. A garantia
+  extra é de permissão: basta que a conta que roda o espelho tenha só leitura naquele arquivo.
+- **É Planilha Google nativa** (ID de 44 caracteres), então a leitura é direta, sem cópia nem
+  conversão. O fuso dela é `America/Los_Angeles`; `paraData_` já normaliza para meia-noite local,
+  e o fuso da planilha **não deve ser corrigido** — mudaria como a equipe inteira vê as datas.
+- **Só mexe em linha marcada "importado".** O que é lançado dentro do app nunca é apagado pelo espelho.
+- **Reconciliação limitada à faixa que cada grade cobre** (`ctx.faixas`, montado na leitura a partir
+  do cabeçalho, não das marcas). A aba `HomeOffice` só começa em 03/08/2026: sem esse limite, o
+  espelho apagaria os home offices de janeiro a julho, que existem aqui e não existem mais lá.
+  Férias não têm faixa de datas: a reconciliação é pelas pessoas presentes na aba.
+- **Sem aviso de divergência** (decisão do usuário, 24/09/2026): dado que existe só no app ou só na
+  planilha convive em silêncio. Perde-se o termômetro do desencontro; ganha-se tela limpa.
+- **Impressão digital antes de gravar:** a rodada calcula um MD5 do que leu e, se for igual ao da
+  rodada anterior, não escreve nada. É o caso de quase toda rodada.
+- **Trava de segurança** (`ESPELHO_MAX_REMOCOES`, padrão 60): uma leitura estranha (aba renomeada,
+  coluna movida) apagaria muita coisa em silêncio. Acima do limite a rodada para e registra;
+  `sincronizarForcado()` libera.
+- **Nada é notificado:** o espelho grava direto na planilha-banco, sem e-mail e sem evento de agenda.
+- **15 minutos** e não 20: o Apps Script só aceita 1, 5, 10, 15 ou 30.
+
+O que a planilha oficial **não** tem: turno nas colunas de sábado anteriores a 2023 (as de 2026 têm),
+histórico de meio-dia (a aba é só a semana corrente, reescrita toda segunda) e plantão em 2026 — a
+grade existe e está vazia porque plantão é sazonal; quando a temporada começar, as marcas entram sozinhas.

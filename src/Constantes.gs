@@ -21,12 +21,13 @@ var ABA_MAPA_NOMES = 'MapaNomes';
 var ABA_RELATORIO_IMPORTACAO = 'RelatorioImportacao';
 var ABA_PREFERENCIAS = 'Preferencias';
 var ABA_FILA = 'FilaTarefas';
+var ABA_LOG_ESPELHO = 'LogEspelho';
 
 // Abas do sistema, na ordem em que o setup() as cria
 var ABAS_DO_SISTEMA = [
   ABA_CONFIG, ABA_LANCAMENTOS, ABA_BLOQUEIOS, ABA_FILA_HO,
   ABA_SALDO_FERIAS, ABA_TROCAS, ABA_AVISOS_IGNORADOS, ABA_LOG_NOTIFICACOES,
-  ABA_MAPA_NOMES, ABA_PREFERENCIAS, ABA_FILA
+  ABA_MAPA_NOMES, ABA_PREFERENCIAS, ABA_FILA, ABA_LOG_ESPELHO
 ];
 
 // Cabeçalhos de cada aba criada pelo setup(). A ordem define as colunas.
@@ -50,6 +51,8 @@ CABECALHOS[ABA_LOG_NOTIFICACOES] = [
 // Nome como aparece na planilha antiga -> e-mail (ou "IGNORAR" para pular a pessoa)
 CABECALHOS[ABA_MAPA_NOMES] = ['Nome na planilha antiga', 'E-mail', 'Observação'];
 CABECALHOS[ABA_RELATORIO_IMPORTACAO] = ['Seção', 'Item', 'Detalhe'];
+// Log técnico do espelho da planilha oficial (ver Sincronizacao.gs)
+CABECALHOS[ABA_LOG_ESPELHO] = ['Quando', 'Evento', 'Detalhe'];
 // Cada pessoa liga/desliga suas notificações no app; sem linha = Sim/Sim
 // Eventos de agenda e e-mails saem por aqui, logo depois da gravação (ver Fila.gs)
 CABECALHOS[ABA_FILA] = ['ID', 'Tipo', 'Dados', 'Criada em', 'Tentativas', 'Status', 'Erro'];
@@ -125,6 +128,12 @@ var CONFIG_PADRAO = [
   ['FERIAS_AVISO_PRAZO_DIAS', 60, 'Aviso quando o prazo limite para gozo estiver a menos dias que isso'],
   ['FERIAS_SOBREPOSICAO_MIN_DIAS', 6, 'Sobreposição de férias só vira aviso/pendência quando duas pessoas coincidem por pelo menos esta quantidade de dias'],
   ['FERIAS_REGRAS_CLT', NAO, 'Sim = avisa sobre fracionamento da CLT (um período de 14+ dias, demais de 5+, não começar 2 dias antes de feriado/folga). Ligar depois de confirmar com o RH'],
+  // Planilha oficial da equipe, lida durante a transição (o sistema NUNCA grava nela)
+  ['ID_PLANILHA_OFICIAL', '', 'ID da planilha que a equipe usa hoje; o sistema só lê dela (o trecho entre /d/ e /edit na URL)'],
+  ['ESPELHO_ATIVO', NAO, 'Sim = a cada 15 min o sistema relê a planilha oficial e reflete as mudanças (precisa do gatilho instalado)'],
+  ['ESPELHO_MAX_REMOCOES', 60, 'Trava de segurança: se uma rodada for apagar mais lançamentos que isso, ela não faz nada e registra no LogEspelho'],
+  ['ESPELHO_IMPRESSAO', '', 'Uso interno: impressão digital da última leitura da planilha oficial'],
+  ['ESPELHO_ULTIMA_RODADA', '', 'Uso interno: quando o espelho rodou pela última vez'],
   // Importação da planilha antiga (só usada uma vez)
   ['ID_PLANILHA_ANTIGA', '', 'ID da planilha antiga convertida para Planilha Google (o trecho entre /d/ e /edit na URL)'],
   ['DATA_INICIO_IMPORTACAO', '2026-01-01', 'Só importa lançamentos a partir desta data'],

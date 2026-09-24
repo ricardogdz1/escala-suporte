@@ -228,6 +228,10 @@ function onOpen() {
     .addItem('Preparar/atualizar abas (setup)', 'setup')
     .addItem('Recarregar configurações e cadastro', 'limparCaches')
     .addItem('Corrigir treinamentos importados', 'corrigirTreinamentosImportados')
+    .addSeparator()
+    .addItem('Definir planilha oficial (link)', 'definirPlanilhaOficial')
+    .addItem('Inspecionar planilha oficial', 'inspecionarPlanilhaOficial')
+    .addItem('Sincronizar com a planilha oficial agora', 'sincronizarAgora')
     .addToUi();
 }
 

@@ -83,20 +83,29 @@ function apagarImportacao() {
 
 // ---------- Núcleo ----------
 
-function executarImportacao_(gravar) {
-  var id = String(obterConfig('ID_PLANILHA_ANTIGA')).trim();
-  if (!id) throw new Error('Preencha Config > ID_PLANILHA_ANTIGA com o ID da planilha antiga (convertida para Planilha Google).');
+/** Lê e interpreta a planilha oficial. Não grava nada: devolve o contexto da leitura. */
+function montarImportacao_() {
+  // A planilha oficial (a que a equipe usa hoje) manda quando estiver preenchida;
+  // ID_PLANILHA_ANTIGA fica como fonte da importação única que já foi feita.
+  var id = idDePlanilha_(obterConfig('ID_PLANILHA_OFICIAL'));
+  if (!id) id = String(obterConfig('ID_PLANILHA_ANTIGA')).trim();
+  if (!id) throw new Error('Preencha Config > ID_PLANILHA_OFICIAL com o link da planilha que a equipe usa hoje.');
   var antiga = SpreadsheetApp.openById(id);
+  Logger.log('Lendo: ' + antiga.getName() + ' (' + id + ')');
 
   var ctx = {
-    gravar: gravar,
+    gravar: false,   // quem grava é executarImportacao_; aqui é só leitura
     dataInicio: paraData_(obterConfig('DATA_INICIO_IMPORTACAO')) || new Date(2026, 0, 1),
     resolvedor: criarResolvedorDeNomes_(),
     lancamentos: [],   // {tipo, email, inicio, fim, turno, status}
     bloqueios: {},     // chave tipo|inicio|fim -> {tipo, inicio, fim, descricao}
     saldos: [],        // {email, saldoInicial, limite}
     relatorio: [],     // [secao, item, detalhe]
-    contagem: {}
+    contagem: {},
+    // Faixa de datas que cada grade cobre (vem do cabeçalho, não das marcas): é o
+    // pedaço do calendário em que a planilha oficial manda. Fora dela o espelho não mexe.
+    faixas: {},        // tipo -> {de, ate}
+    pessoasFerias: {}  // e-mail -> true (a aba Férias não tem faixa de datas, tem pessoas)
   };
 
   importarSabados_(abaAntiga_(antiga, ABAS_ANTIGAS.sabados), ctx);
@@ -104,6 +113,12 @@ function executarImportacao_(gravar) {
   importarHomeOffice_(abaAntiga_(antiga, ABAS_ANTIGAS.homeOffice), ctx);
   importarMeioDia_(abaAntiga_(antiga, ABAS_ANTIGAS.meioDia), ctx);
   importarFerias_(abaAntiga_(antiga, ABAS_ANTIGAS.feriasAba), ctx);
+  return ctx;
+}
+
+function executarImportacao_(gravar) {
+  var ctx = montarImportacao_();
+  ctx.gravar = gravar;
 
   var naoMapeados = ctx.resolvedor.naoMapeados();
   naoMapeados.forEach(function (n) {
@@ -136,6 +151,15 @@ function abaAntiga_(ss, nome) {
   var aba = ss.getSheets().filter(function (s) { return semAcentos_(s.getName()) === alvo; })[0];
   if (!aba) throw new Error('Aba "' + nome + '" não encontrada na planilha antiga.');
   return aba;
+}
+
+/** Marca que a grade do tipo cobre esta data (mesmo sem ninguém marcado nela). */
+function cobrir_(ctx, tipo, data) {
+  if (!data || data.getTime() < ctx.dataInicio.getTime()) return;
+  var f = ctx.faixas[tipo];
+  if (!f) { ctx.faixas[tipo] = { de: data, ate: data }; return; }
+  if (data.getTime() < f.de.getTime()) f.de = data;
+  if (data.getTime() > f.ate.getTime()) f.ate = data;
 }
 
 function contar_(ctx, chave) {
@@ -223,6 +247,7 @@ function importarSabados_(aba, ctx) {
     var email = ctx.resolvedor.resolver(p.nome, ABAS_ANTIGAS.sabados);
     for (var c = 1; c < colunas.length; c++) {
       var col = colunas[c];
+      if (col) cobrir_(ctx, TIPO.SABADO, col.data);
       var v = String(p.valores[c] || '').trim();
       if (!col || !v || col.data.getTime() < ctx.dataInicio.getTime()) continue;
 
@@ -287,6 +312,7 @@ function importarPlantoes_(aba, ctx) {
     for (var c = 1; c < g.cabecalho.length; c++) {
       var data = g.cabecalho[c] instanceof Date ? paraData_(g.cabecalho[c]) : null;
       var v = String(p.valores[c] || '').trim();
+      if (data) cobrir_(ctx, TIPO.PLANTAO, data);
       if (!data || !v) continue;
       if (ehMarcaX_(v)) {
         if (email && email !== MAPA_IGNORAR) {
@@ -311,6 +337,7 @@ function importarHomeOffice_(aba, ctx) {
     for (var c = 1; c < g.cabecalho.length; c++) {
       var data = g.cabecalho[c] instanceof Date ? paraData_(g.cabecalho[c]) : null;
       var v = String(p.valores[c] || '').trim();
+      if (data) cobrir_(ctx, TIPO.HOME_OFFICE, data);
       if (!data || !v) continue;
       var segunda = inicioDaSemana_(data);
       var chave = formatarDataIso_(segunda);
@@ -340,6 +367,7 @@ function importarMeioDia_(aba, ctx) {
   var segunda = paraData_(obterConfig('SEMANA_MEIO_DIA_IMPORTACAO')) || inicioDaSemana_(hoje_());
   segunda = inicioDaSemana_(segunda);
   var g = lerGrade_(aba, 1, 2);
+  for (var d0 = 0; d0 < 5; d0++) cobrir_(ctx, TIPO.MEIO_DIA, adicionarDias_(segunda, d0));
   // colunas B..F = segunda..sexta (posições 1..5)
   g.pessoas.forEach(function (p) {
     var email = ctx.resolvedor.resolver(p.nome, ABAS_ANTIGAS.meioDia);
@@ -370,6 +398,7 @@ function importarFerias_(aba, ctx) {
     if (!nome) break;
     var email = ctx.resolvedor.resolver(nome, ABAS_ANTIGAS.feriasAba);
     if (!email || email === MAPA_IGNORAR) continue;
+    ctx.pessoasFerias[email] = true;
 
     var saldo = Number(valores[i][1]);
     var limite = valores[i][2] instanceof Date ? paraData_(valores[i][2]) : null;

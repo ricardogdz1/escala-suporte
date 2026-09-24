@@ -81,6 +81,16 @@ GERAL, CONTABILIDADE, EMISSÃO, SEMENTES, ATUALIZAÇÃO, AQILA, CADASTROS (hoje 
 - Eventos de sábado, meio-dia, plantão, home office e férias: um evento por pessoa, criado na agenda da conta que roda o sistema, com ela como participante — aparece na agenda dela. Não há calendário separado.
 - Sábado: horário do turno (8–11 ou 9–12). Meio-dia: 12:30–14:00 como referência do intervalo deslocado. Plantão: 18:00–20:00 (dia útil) ou 13:00–17:00 (sábado). Home office: dia inteiro, segunda a sexta.
 
+## Espelho da planilha oficial (transição)
+Enquanto a equipe continuar registrando na planilha "Agenda Suporte", ela é a fonte da verdade do que
+veio de lá. O sistema lê aquela planilha a cada 15 minutos e reflete as mudanças: o que aparece entra,
+o que some sai. Regras:
+- O espelho só mexe em lançamento marcado `importado`. Lançamento feito dentro do app fica como está,
+  e não gera aviso por não existir na planilha (nem o contrário).
+- O espelho só mexe dentro do período que cada grade cobre. Fora dele, o histórico do sistema fica intacto.
+- Nada que vem da planilha dispara e-mail ou evento de agenda.
+- O sistema nunca escreve na planilha oficial.
+
 ## Como os avisos aparecem
 1. Na hora de salvar: janela com o aviso e os botões "Cancelar" e "Salvar mesmo assim".
 2. No calendário: dia/semana marcado até a situação se resolver.
