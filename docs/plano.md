@@ -69,7 +69,7 @@ reflete as mudanças. Só leitura: nada é gravado lá. Ver `docs/decisoes.md`.
       faixa de datas que cobrem (`ctx.faixas`)
 - [x] Testado de ponta a ponta com `testarEspelho()` em 24/09/2026 (turno adulterado aqui, desfeito pelo espelho)
 - [ ] `instalarEspelho()` — instalar o gatilho de 15 minutos e acompanhar alguns dias
-- [ ] Publicar versão nova no `/exec` (o `/exec` ainda está na versão 3)
+- [x] Publicada a versão 4 no `/exec` (24/09/2026)
 
 Config: `ID_PLANILHA_OFICIAL` (link), `ESPELHO_ATIVO` (Sim/Não, desliga sem mexer no gatilho),
 `ESPELHO_MAX_REMOCOES` (60), `ESPELHO_IMPRESSAO` e `ESPELHO_ULTIMA_RODADA` (uso interno).
@@ -87,7 +87,8 @@ clasp redeploy AKfycbyN6Et8LhhLsFbmnYlQ6JIrH4wjznr6YL--sgNiXeeWAQJB1YVEIMtXvewft
 ```
 
 Atenção ao `-V` maiúsculo: o `-v` minúsculo mostra a versão do próprio clasp e não faz nada.
-Versão publicada hoje: **3** (desempenho: cache das abas, painel otimizado, avisos por dia).
+Versões publicadas: **3** (desempenho: cache das abas, painel otimizado, avisos por dia) e
+**4**, de 24/09/2026 (espelho da planilha oficial; pessoa inativa some só dos dias de hoje em diante).
 
 Gatilhos instalados na conta do projeto: `processarFila` (fila de agenda/e-mail, sob demanda)
 e `aquecerCache` (a cada 5 min, 6h–20h, seg–sáb).
