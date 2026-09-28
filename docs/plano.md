@@ -87,8 +87,9 @@ clasp redeploy AKfycbyN6Et8LhhLsFbmnYlQ6JIrH4wjznr6YL--sgNiXeeWAQJB1YVEIMtXvewft
 ```
 
 Atenção ao `-V` maiúsculo: o `-v` minúsculo mostra a versão do próprio clasp e não faz nada.
-Versões publicadas: **3** (desempenho: cache das abas, painel otimizado, avisos por dia) e
-**4**, de 24/09/2026 (espelho da planilha oficial; pessoa inativa some só dos dias de hoje em diante).
+Versões publicadas: **3** (desempenho: cache das abas, painel otimizado, avisos por dia),
+**4**, de 24/09/2026 (espelho da planilha oficial; pessoa inativa some só dos dias de hoje em diante)
+e **5**, de 28/09/2026 (identidade visual do Grupo Agros: menu em verde escuro e logo embutida).
 
 Gatilhos instalados na conta do projeto: `processarFila` (fila de agenda/e-mail, sob demanda)
 e `aquecerCache` (a cada 5 min, 6h–20h, seg–sáb).
