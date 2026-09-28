@@ -88,7 +88,7 @@ function atualizarSaldosDoEspelho_(ctx) {
 }
 
 /** Tira o que sumiu da planilha. Devolve quanto foi apagado. */
-function removerDoEspelho_(ctx, forcar) {
+function removerDoEspelho_(ctx, semTrava) {
   var desejados = {};
   ctx.lancamentos.forEach(function (l) {
     desejados[chaveLancamento_(l.tipo, l.email, l.inicio, l.fim || l.inicio, l.turno)] = true;
@@ -115,7 +115,7 @@ function removerDoEspelho_(ctx, forcar) {
 
   var total = lancamentos.length + bloqueios.length;
   var limite = obterConfigNumero('ESPELHO_MAX_REMOCOES') || 60;
-  if (!forcar && total > limite) {
+  if (!semTrava && total > limite) {
     // Uma leitura estranha (aba renomeada, coluna movida) apagaria meio sistema em silêncio.
     return { bloqueado: true, total: total, limite: limite, lancamentos: 0, bloqueios: 0 };
   }
@@ -126,14 +126,32 @@ function removerDoEspelho_(ctx, forcar) {
   bloqueios.sort(function (a, b) { return b._linha - a._linha; })
     .forEach(function (b) { apagarLinha_(ABA_BLOQUEIOS, b._linha); });
 
-  return { bloqueado: false, lancamentos: lancamentos.length, bloqueios: bloqueios.length };
+  // Detalhe do que saiu, para o LogEspelho: sem isso, saber o que o espelho apagou
+  // depende de comparar a planilha com a memória de alguém.
+  var detalhes = lancamentos.slice(0, 20).map(function (x) {
+    return x.tipo + ' · ' + x.email + ' · ' + formatarDataBr_(x.inicio) + (x.turno ? ' ' + x.turno : '');
+  });
+  if (lancamentos.length > 20) detalhes.push('… e mais ' + (lancamentos.length - 20) + ' lançamento(s)');
+  bloqueios.slice(0, 10).forEach(function (b) {
+    detalhes.push(b.tipo + ' · ' + formatarDataBr_(b.inicio));
+  });
+
+  return {
+    bloqueado: false,
+    lancamentos: lancamentos.length,
+    bloqueios: bloqueios.length,
+    detalhes: detalhes
+  };
 }
 
 /**
  * Uma rodada do espelho.
- * @param {boolean} forcar  ignora a impressão digital e a trava de remoções.
+ * @param {boolean} forcar    lê e grava mesmo que a planilha não tenha mudado.
+ * @param {boolean} semTrava  ignora também o limite de remoções por rodada.
+ *   Os dois são separados de propósito: mudar as regras de leitura exige o primeiro,
+ *   e não é motivo para desligar a rede de segurança.
  */
-function espelhar_(forcar) {
+function espelhar_(forcar, semTrava) {
   var trava = LockService.getScriptLock();
   if (!trava.tryLock(30000)) return ['Outra rodada do espelho está em andamento.'];
   try {
@@ -151,10 +169,10 @@ function espelhar_(forcar) {
       return ['Planilha oficial sem mudanças desde a última rodada.'];
     }
 
-    var fora = removerDoEspelho_(ctx, forcar);
+    var fora = removerDoEspelho_(ctx, semTrava);
     if (fora.bloqueado) {
       var aviso = 'Rodada parada: apagaria ' + fora.total + ' registro(s), acima do limite de ' +
-        fora.limite + '. Confira a planilha oficial e, se estiver certo, rode sincronizarForcado().';
+        fora.limite + '. Confira a planilha oficial e, se estiver certo, rode sincronizarSemTrava().';
       registrarEspelho_([['Trava de segurança', aviso]]);
       return [aviso];
     }
@@ -172,8 +190,12 @@ function espelhar_(forcar) {
       'Saldos atualizados: ' + saldos
     ];
     if (dentro.lancamentos + dentro.bloqueios + dentro.saldos + fora.lancamentos + fora.bloqueios + saldos) {
-      registrarEspelho_([['Rodada', resumo.join(' · ')]]);
+      var eventos = [['Rodada', resumo.join(' · ')]];
+      (fora.detalhes || []).forEach(function (d) { eventos.push(['Saiu', d]); });
+      registrarEspelho_(eventos);
     }
+    // Numa rodada manual, quem está olhando quer ver o que saiu sem abrir o LogEspelho.
+    (fora.detalhes || []).forEach(function (d) { resumo.push('  saiu: ' + d); });
     return resumo;
   } finally {
     trava.releaseLock();
@@ -195,9 +217,14 @@ function sincronizarAgora() {
   Logger.log(espelhar_(false).join(String.fromCharCode(10)));
 }
 
-/** Rodada manual ignorando a impressão digital e a trava de remoções. */
+/** Rodada manual mesmo sem mudança na planilha (ex.: as regras de leitura mudaram). */
 function sincronizarForcado() {
-  Logger.log(espelhar_(true).join(String.fromCharCode(10)));
+  Logger.log(espelhar_(true, false).join(String.fromCharCode(10)));
+}
+
+/** Último recurso: ignora também o limite de remoções. Só depois de conferir o motivo. */
+function sincronizarSemTrava() {
+  Logger.log(espelhar_(true, true).join(String.fromCharCode(10)));
 }
 
 function instalarEspelho() {
@@ -245,7 +272,7 @@ function testarEspelho() {
   atualizarLinha_(ABA_LANCAMENTOS, alvo._linha, { 'Turno': trocado });
 
   // forçado: a planilha oficial não mudou, então a impressão digital é a mesma de antes.
-  linhas.push('Espelho: ' + espelhar_(true).join(' | '));
+  linhas.push('Espelho: ' + espelhar_(true, false).join(' | '));
 
   var depois = lerAba_(ABA_LANCAMENTOS).map(lancamentoDaLinha_).filter(function (x) {
     return x.tipo === TIPO.SABADO && chaveDia(x) === chaveDia(alvo);
@@ -256,5 +283,34 @@ function testarEspelho() {
   linhas.push(depois.length === 1 && depois[0].turno === alvo.turno
     ? 'OK: o espelho apagou o adulterado e trouxe de volta o da planilha.'
     : 'ATENÇÃO: não voltou ao esperado — me mande este log.');
+  Logger.log(linhas.join(String.fromCharCode(10)));
+}
+
+/** Como está o espelho agora: gatilho, chave liga/desliga, planilha de origem e última rodada. */
+function estadoDoEspelho() {
+  var gatilhos = ScriptApp.getProjectTriggers().filter(function (t) {
+    return t.getHandlerFunction() === 'sincronizarEspelho';
+  });
+  var id = idDePlanilha_(obterConfig('ID_PLANILHA_OFICIAL'));
+  // O Planilhas converte "24/09/2026 14:38" em data; aqui volta a ser texto legível.
+  var ultima = obterConfig('ESPELHO_ULTIMA_RODADA');
+  if (ultima instanceof Date) ultima = formatarDataHoraBr_(ultima);
+  var linhas = [
+    'Gatilho de 15 min: ' + (gatilhos.length ? 'instalado (' + gatilhos.length + ')' : 'NÃO INSTALADO'),
+    'ESPELHO_ATIVO: ' + (obterConfig('ESPELHO_ATIVO') || '(vazio)'),
+    'Planilha oficial: ' + (id ? SpreadsheetApp.openById(id).getName() + ' (' + id + ')' : 'NÃO DEFINIDA'),
+    'Última rodada: ' + (ultima || 'ainda não rodou'),
+    'Fuso da planilha-banco: ' + SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(),
+    'Limite de remoções por rodada: ' + (obterConfigNumero('ESPELHO_MAX_REMOCOES') || 60)
+  ];
+  var log = lerAba_(ABA_LOG_ESPELHO);
+  linhas.push('Últimas linhas do LogEspelho:');
+  if (!log.length) {
+    linhas.push('  (nenhuma — rodada sem novidade não escreve)');
+  } else {
+    log.slice(-5).forEach(function (l) {
+      linhas.push('  ' + formatarDataHoraBr_(l['Quando']) + ' · ' + l['Evento'] + ' · ' + l['Detalhe']);
+    });
+  }
   Logger.log(linhas.join(String.fromCharCode(10)));
 }

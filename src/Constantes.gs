@@ -137,6 +137,5 @@ var CONFIG_PADRAO = [
   // Importação da planilha antiga (só usada uma vez)
   ['ID_PLANILHA_ANTIGA', '', 'ID da planilha antiga convertida para Planilha Google (o trecho entre /d/ e /edit na URL)'],
   ['DATA_INICIO_IMPORTACAO', '2026-01-01', 'Só importa lançamentos a partir desta data'],
-  ['SEMANA_MEIO_DIA_IMPORTACAO', '', 'Segunda-feira da semana em que a grade "Plantão Meio dia" vale (vazio = semana atual)'],
-  ['TREINAMENTO_EQUIPE_MIN', 5, 'Importação: sábado com pelo menos esta quantidade de pessoas em treinamento é treinamento da equipe (fica bloqueado); com menos, são treinamentos individuais']
+  ['TREINAMENTO_EQUIPE_MIN', 5, 'Guarda do treinamento da equipe: o sábado só fica cinza se ninguém estiver atendendo E houver pelo menos esta quantidade de pessoas em treinamento']
 ];

@@ -237,6 +237,14 @@ function ehMarcaX_(v) {
   return /^x+$/i.test(String(v || '').trim());
 }
 
+/**
+ * Texto de ausência: a pessoa não vai estar no sábado. Não conta como "atendendo",
+ * então não descaracteriza um treinamento da equipe.
+ */
+function ehAusencia_(v) {
+  return /f[ée]rias|atestado|licen[çc]a|afastad|folga/i.test(String(v || ''));
+}
+
 function importarSabados_(aba, ctx) {
   var g = lerGrade_(aba, 1, 2);
   var colunas = g.cabecalho.map(cabecalhoSabado_);
@@ -261,35 +269,47 @@ function importarSabados_(aba, ctx) {
       (porData[chave] = porData[chave] || []).push({
         pessoa: p, email: email, col: col, valor: v,
         marcaX: ehMarcaX_(v),
-        treinamento: /treinamento/i.test(v)
+        treinamento: /treinamento/i.test(v),
+        ausencia: ehAusencia_(v)
       });
     }
   });
 
-  // 2ª passada: um sábado é TREINAMENTO da equipe (bloqueado) quando pelo menos
-  // Config > TREINAMENTO_EQUIPE_MIN pessoas estão em treinamento nele (num treinamento da equipe a
-  // planilha antiga marca quase todo mundo; um treinamento específico tem 1–3 pessoas).
-  // Cada pessoa vira escala normal, marcada "em treinamento" quando o texto dela diz isso.
+  // 2ª passada: o sábado é TREINAMENTO da equipe quando NINGUÉM está atendendo nele.
+  // Todo mundo marcado está em treinamento; quem está de férias ou atestado não conta contra.
+  // Um único "X" na coluna já faz dele um sábado normal, com treinamentos individuais
+  // (regra corrigida pelo usuário em 28/09/2026 — antes bastavam 5 pessoas em treinamento,
+  // o que marcava como treinamento da equipe sábados em que metade do time atendia).
+  // O mínimo sobrou como guarda: um treinamento de uma pessoa, num sábado em que mais
+  // ninguém foi marcado, não deve pintar o dia inteiro de cinza.
   var minimoEquipe = Math.max(1, obterConfigNumero('TREINAMENTO_EQUIPE_MIN') || 5);
   Object.keys(porData).sort().forEach(function (chave) {
     var marcas = porData[chave];
     var data = marcas[0].col.data;
-    var pessoasNoDia = {};
-    var pessoasEmTreinamento = {};
+
+    // Situação de cada pessoa no dia: atender manda sobre treinar, treinar manda sobre faltar.
+    var situacao = {};
     marcas.forEach(function (m) {
-      pessoasNoDia[m.pessoa.nome] = true;
-      if (m.treinamento) pessoasEmTreinamento[m.pessoa.nome] = true;
+      var nova = m.treinamento ? 'treinando' : (m.ausencia ? 'ausente' : 'atendendo');
+      var atual = situacao[m.pessoa.nome];
+      if (atual === 'atendendo' || nova === 'atendendo') situacao[m.pessoa.nome] = 'atendendo';
+      else if (atual === 'treinando' || nova === 'treinando') situacao[m.pessoa.nome] = 'treinando';
+      else situacao[m.pessoa.nome] = nova;
     });
-    var total = Object.keys(pessoasNoDia).length;
-    var emTreinamento = Object.keys(pessoasEmTreinamento).length;
-    var equipeInteira = emTreinamento >= minimoEquipe;
+    var treinando = 0, atendendo = 0;
+    Object.keys(situacao).forEach(function (nome) {
+      if (situacao[nome] === 'treinando') treinando++;
+      else if (situacao[nome] === 'atendendo') atendendo++;
+    });
+    var total = Object.keys(situacao).length;
+    var equipeInteira = atendendo === 0 && treinando >= minimoEquipe;
     if (equipeInteira) adicionarBloqueio_(ctx, BLOQUEIO.TREINAMENTO, data, data, 'TREINAMENTO');
 
     var textos = {};
     marcas.forEach(function (m) { if (!m.marcaX) textos[m.valor] = true; });
     ctx.relatorio.push(['Resumo do sábado', formatarDataBr_(data),
-      total + ' pessoa(s) marcada(s), ' + emTreinamento + ' em treinamento (mínimo para equipe: ' + minimoEquipe + ') → ' +
-      (equipeInteira ? 'TREINAMENTO DA EQUIPE (bloqueado)' : 'sábado normal') +
+      total + ' pessoa(s) marcada(s): ' + atendendo + ' atendendo, ' + treinando + ' em treinamento → ' +
+      (equipeInteira ? 'TREINAMENTO DA EQUIPE (ninguém atendendo)' : 'sábado normal') +
       (Object.keys(textos).length ? ' · textos: ' + Object.keys(textos).join(' | ') : '')]);
 
     marcas.forEach(function (m) {
@@ -364,10 +384,17 @@ function importarHomeOffice_(aba, ctx) {
 }
 
 function importarMeioDia_(aba, ctx) {
-  var segunda = paraData_(obterConfig('SEMANA_MEIO_DIA_IMPORTACAO')) || inicioDaSemana_(hoje_());
-  segunda = inicioDaSemana_(segunda);
+  // A grade não tem data nenhuma: ela é sempre a semana corrente, reescrita toda segunda.
+  var hoje = hoje_();
+  var segunda = inicioDaSemana_(hoje);
   var g = lerGrade_(aba, 1, 2);
-  for (var d0 = 0; d0 < 5; d0++) cobrir_(ctx, TIPO.MEIO_DIA, adicionarDias_(segunda, d0));
+  // Só de hoje em diante o espelho manda. Num dia que já passou, célula vazia não quer dizer
+  // "ninguém ficou no meio-dia": quer dizer que a semana virou na planilha. O que já foi
+  // registrado é histórico e fica (pedido do usuário, 28/09/2026).
+  for (var d0 = 0; d0 < 5; d0++) {
+    var dia = adicionarDias_(segunda, d0);
+    if (dia.getTime() >= hoje.getTime()) cobrir_(ctx, TIPO.MEIO_DIA, dia);
+  }
   // colunas B..F = segunda..sexta (posições 1..5)
   g.pessoas.forEach(function (p) {
     var email = ctx.resolvedor.resolver(p.nome, ABAS_ANTIGAS.meioDia);

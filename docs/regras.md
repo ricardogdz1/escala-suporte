@@ -21,7 +21,7 @@ GERAL, CONTABILIDADE, EMISSÃO, SEMENTES, ATUALIZAÇÃO, AQILA, CADASTROS (hoje 
 - Sábados com bloqueio (ex.: treinamento da equipe) geram aviso para quem tentar se escalar.
 - Relatório: quantidade de sábados por pessoa no ano.
 - A tela mostra o **mês atual + 11 meses** à frente. Cartões "Meses anteriores" (topo) e "Próximos meses" (fim) carregam mais 12 meses por clique, para ajustes em anos passados/futuros.
-- Ao se escalar, a pessoa pode marcar **"em treinamento"**: ela vai no sábado, mas não atende. Aparece no cartão (etiqueta azul) e **não conta** para o mínimo/máximo nem cobre setor. Na importação, células com texto contendo "treinamento" viram esse tipo de escala; o sábado só é bloqueado (treinamento da equipe) quando pelo menos `TREINAMENTO_EQUIPE_MIN` pessoas (Config, padrão 5) estão em treinamento nele.
+- Ao se escalar, a pessoa pode marcar **"em treinamento"**: ela vai no sábado, mas não atende. Aparece no cartão (etiqueta azul) e **não conta** para o mínimo/máximo nem cobre setor. Na importação, células com texto contendo "treinamento" viram esse tipo de escala; o sábado só é lido como **treinamento da equipe** quando **ninguém está atendendo** nele — todos os marcados estão em treinamento, e quem está de férias ou atestado não conta contra. Um único "X" na coluna faz dele um sábado normal com treinamentos individuais. `TREINAMENTO_EQUIPE_MIN` (padrão 5) sobrou como guarda, para o treinamento de uma pessoa sozinha não pintar o dia inteiro.
 - A pessoa marca várias mudanças (entrar em X, sair de Y) e **salva tudo de uma vez**; o gestor faz o mesmo para qualquer pessoa.
 - **Só o gestor** marca um sábado como treinamento da equipe, pelo próprio cartão (botão "Marcar treinamento"). O sábado fica cinza, deixa de cobrar mínimo/máximo e cobertura, e quem se escalar nele recebe aviso. Treinamentos de vários dias (vindos da importação) só são ajustados na aba `Bloqueios`.
 - **Sair de um sábado não pede confirmação de aviso** (decisão do usuário, 21/09/2026): o aviso (abaixo do mínimo, setor descoberto) é registrado em `AvisosIgnorados` mesmo assim. Entrar num sábado segue o fluxo normal de "Salvar mesmo assim".
@@ -88,6 +88,7 @@ o que some sai. Regras:
 - O espelho só mexe em lançamento marcado `importado`. Lançamento feito dentro do app fica como está,
   e não gera aviso por não existir na planilha (nem o contrário).
 - O espelho só mexe dentro do período que cada grade cobre. Fora dele, o histórico do sistema fica intacto.
+- **Meio-dia é caso especial:** a grade da planilha não tem data, é sempre a semana corrente e é reescrita toda segunda. Por isso o espelho só manda de **hoje em diante**; o que já foi registrado em dias passados é histórico e não sai mais.
 - Nada que vem da planilha dispara e-mail ou evento de agenda.
 - O sistema nunca escreve na planilha oficial.
 

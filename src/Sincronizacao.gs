@@ -32,8 +32,24 @@ function definirPlanilhaOficial() {
   if (r.getSelectedButton() !== ui.Button.OK) return;
   var id = idDePlanilha_(r.getResponseText());
   if (!id) { ui.alert('Não reconheci um ID de planilha nesse texto.'); return; }
+  var anterior = idDePlanilha_(obterConfig('ID_PLANILHA_OFICIAL'));
   gravarConfig_('ID_PLANILHA_OFICIAL', id);
+
+  if (anterior && anterior !== id && ehSim_(obterConfig('ESPELHO_ATIVO'))) {
+    // Trocar a origem sem conferir antes é o caminho mais curto para o espelho apagar
+    // o que não devia: o que existe aqui e não existe na origem nova sai. Pausa e espera conferência.
+    gravarConfig_('ESPELHO_ATIVO', NAO);
+    ui.alert('Guardado: ' + id + '\n\nO espelho foi PAUSADO porque a planilha de origem mudou.\n' +
+      'Confira com importarPrevia() e sincronizarAgora(); depois rode retomarEspelho().');
+    return;
+  }
   ui.alert('Guardado: ' + id + '\n\nAgora rode "Inspecionar planilha oficial" no mesmo menu.');
+}
+
+/** Volta a deixar o gatilho agir, depois de conferir a troca de origem. */
+function retomarEspelho() {
+  gravarConfig_('ESPELHO_ATIVO', SIM);
+  Logger.log('Espelho ativo de novo: o gatilho volta a refletir a planilha oficial a cada 15 minutos.');
 }
 
 /**
