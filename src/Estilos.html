@@ -2,18 +2,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --fundo: #F5F3EC;
+    /* Cores tiradas da logo do Grupo Agros: amarelo #F0CC24, verde folha #84A824
+       e o verde escuro do contorno #0C4800, que vira o fundo do menu. Os tons de
+       texto foram escurecidos o bastante para manter contraste AA sobre branco. */
+    --fundo: #F4F4EC;
     --cartao: #FFFFFF;
-    --borda: #E5E1D6;
-    --texto: #1F2B23;
-    --texto-suave: #6B736E;
-    --menu: #1F2B23;
-    --menu-texto: #D7DED8;
-    --menu-ativo: #2F6B3A;
-    --verde: #2F6B3A;
-    --verde-escuro: #26582F;
-    --verde-claro: #E4EFE6;
-    --amarelo: #E9B44C;
+    --borda: #E3E2D5;
+    --texto: #1B2A1B;
+    --texto-suave: #69716A;
+    --menu: #0C3D06;
+    --menu-texto: #CBDCC0;
+    --menu-ativo: #24680F;
+    --verde: #2E6B1E;
+    --verde-escuro: #24551A;
+    --verde-claro: #E8F0DA;
+    --amarelo: #F0CC24;
+    --marca-folha: #84A824;
     --ambar: #8A4B08;
     --ambar-claro: #FBEFD9;
     --ambar-borda: #F0D9B0;
@@ -46,7 +50,7 @@
   p { margin: 0 0 8px; }
   a { color: var(--verde); }
   button { font-family: inherit; font-size: inherit; cursor: pointer; }
-  :focus-visible { outline: 3px solid #7FB58A; outline-offset: 2px; }
+  :focus-visible { outline: 3px solid #6FA52B; outline-offset: 2px; }
   .oculto { display: none !important; }
   .visualmente-oculto {
     position: absolute; width: 1px; height: 1px; overflow: hidden;
@@ -75,10 +79,14 @@
     top: 0;
     height: 100vh;
   }
-  .menu-topo { display: flex; align-items: center; gap: 12px; padding: 24px 20px 20px; }
-  .menu-topo svg { width: 30px; height: 30px; flex: 0 0 auto; }
-  .menu-topo .marca { font-family: var(--fonte-titulo); font-size: 19px; font-weight: 700; color: #fff; line-height: 1.1; }
-  .menu-topo .sub { font-size: 12.5px; color: #9FAAA2; margin-top: 2px; }
+  .menu-topo { padding: 22px 20px 18px; }
+  .menu-topo .logo { display: block; width: 150px; height: auto; }
+  .menu-topo .marca {
+    font-family: var(--fonte-titulo); font-size: 17px; font-weight: 700; color: #fff;
+    line-height: 1.1; margin-top: 14px; padding-top: 12px;
+    border-top: 2px solid var(--amarelo);
+  }
+  .menu-topo .sub { font-size: 12.5px; color: #9FB894; margin-top: 2px; }
   .menu nav { flex: 1; padding: 4px 14px; display: flex; flex-direction: column; gap: 4px; }
   .menu-item {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
